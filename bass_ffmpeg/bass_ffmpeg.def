@@ -1,0 +1,5 @@
+LIBRARY bass_ffmpeg
+VERSION 2.4
+EXPORTS
+BASSplugin
+BASS_FFMPEG_StreamCreateFile

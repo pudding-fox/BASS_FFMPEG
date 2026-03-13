@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ManagedBass.Ffmpeg.Test": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    },
+  }
+}
