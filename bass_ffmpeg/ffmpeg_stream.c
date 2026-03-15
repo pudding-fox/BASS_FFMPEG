@@ -176,11 +176,38 @@ DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD 
 
 QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
 	return stream->stream->duration
-		* stream->stream->time_base.num
 		* stream->codec_context->sample_rate
 		* stream->codec_context->channels
 		* bass_bytes_per_sample(stream->flags)
 		/ stream->stream->time_base.den;
+}
+
+BOOL ffmpeg_stream_can_seek(FFMPEG_STREAM* const stream, QWORD position) {
+	return position >= 0 && position <= ffmpeg_stream_length(stream);
+}
+
+BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
+	QWORD timestamp = position
+		* stream->codec_context->sample_rate
+		* stream->codec_context->channels
+		* bass_bytes_per_sample(stream->flags)
+		/ stream->stream->time_base.den;
+	DWORD flags = AVSEEK_FLAG_ANY;
+	DWORD result = av_seek_frame(
+		stream->format_context,
+		stream->stream_index,
+		av_index_search_timestamp(stream->stream, timestamp, flags),
+		flags
+	);
+	if (result < 0) {
+		return FALSE;
+	}
+	return TRUE;
+}
+
+BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {
+	avcodec_flush_buffers(stream->codec_context);
+	return TRUE;
 }
 
 BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {

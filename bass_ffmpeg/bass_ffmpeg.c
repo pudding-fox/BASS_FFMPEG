@@ -143,11 +143,25 @@ VOID WINAPI BASS_FFMPEG_GetInfo(void* inst, BASS_CHANNELINFO* info) {
 }
 
 BOOL WINAPI BASS_FFMPEG_CanSetPosition(void* inst, QWORD position, DWORD mode) {
-	return FALSE;
+	FFMPEG_STREAM* stream = inst;
+	if (mode == BASS_POS_BYTE) {
+		return ffmpeg_stream_can_seek(stream, position);
+	}
+	else {
+		error(BASS_ERROR_NOTAVAIL);
+	}
 }
 
 QWORD WINAPI BASS_FFMPEG_SetPosition(void* inst, QWORD position, DWORD mode) {
-	return 0;
+	FFMPEG_STREAM* stream = inst;
+	if (mode == BASS_POS_BYTE) {
+		if (ffmpeg_stream_seek(stream, position)) {
+			if (ffmpeg_stream_reset(stream)) {
+				return position;
+			}
+		}
+	}
+	errorn(BASS_ERROR_NOTAVAIL);
 }
 
 VOID WINAPI BASS_FFMPEG_Free(void* inst) {

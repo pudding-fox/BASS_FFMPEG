@@ -27,4 +27,10 @@ DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD 
 
 QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream);
 
+BOOL ffmpeg_stream_can_seek(FFMPEG_STREAM* const stream, QWORD position);
+
+BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position);
+
+BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream);
+
 BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream);
