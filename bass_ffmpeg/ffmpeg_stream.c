@@ -116,6 +116,7 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
+	(*stream)->flags = flags;
 	return TRUE;
 }
 
@@ -150,13 +151,13 @@ retry:
 	return TRUE;
 }
 
-DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD length, DWORD flags) {
+DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD length) {
 	DWORD position = 0;
 	DWORD remaining = length;
 	while (stream->frame_position < stream->frame_count) {
 		AVFrame* frame = stream->frames[stream->frame_position];
 		DWORD samples_per_frame = frame->nb_samples * frame->channels;
-		DWORD bytes_per_frame = samples_per_frame * bass_bytes_per_sample(flags);
+		DWORD bytes_per_frame = samples_per_frame * bass_bytes_per_sample(stream->flags);
 		if (bytes_per_frame > remaining) {
 			break;
 		}
@@ -171,6 +172,15 @@ DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD 
 		remaining -= bytes_per_frame;
 	}
 	return length - remaining;
+}
+
+QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
+	return stream->stream->duration
+		* stream->stream->time_base.num
+		* stream->codec_context->sample_rate
+		* stream->codec_context->channels
+		* bass_bytes_per_sample(stream->flags)
+		/ stream->stream->time_base.den;
 }
 
 BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {

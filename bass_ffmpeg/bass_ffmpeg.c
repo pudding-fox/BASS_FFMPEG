@@ -110,17 +110,13 @@ DWORD WINAPI BASS_FFMPEG_StreamProc(HSTREAM handle, void* buffer, DWORD length, 
 	FFMPEG_STREAM* stream = user;
 	DWORD position = 0;
 	DWORD remaining = length;
-	BASS_CHANNELINFO channel_info;
-	if (!BASS_ChannelGetInfo(handle, &channel_info)) {
-		return 0;
-	}
 	while (remaining > 0) {
 		if (!stream->frame_count || stream->frame_position == stream->frame_count) {
 			if (!ffmpeg_stream_update(stream)) {
 				return BASS_STREAMPROC_END;
 			}
 		}
-		DWORD count = ffmpeg_stream_read(stream, (BYTE*)buffer + position, remaining, channel_info.flags);
+		DWORD count = ffmpeg_stream_read(stream, (BYTE*)buffer + position, remaining);
 		if (!count) {
 			break;
 		}
@@ -131,7 +127,13 @@ DWORD WINAPI BASS_FFMPEG_StreamProc(HSTREAM handle, void* buffer, DWORD length, 
 }
 
 QWORD WINAPI BASS_FFMPEG_GetLength(void* inst, DWORD mode) {
-	return 0;
+	FFMPEG_STREAM* stream = inst;
+	if (mode == BASS_POS_BYTE) {
+		noerrorn(ffmpeg_stream_length(stream));
+	}
+	else {
+		errorn(BASS_ERROR_NOTAVAIL);
+	}
 }
 
 VOID WINAPI BASS_FFMPEG_GetInfo(void* inst, BASS_CHANNELINFO* info) {

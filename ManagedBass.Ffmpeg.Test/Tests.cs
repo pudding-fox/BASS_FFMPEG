@@ -95,5 +95,131 @@ namespace ManagedBass.Ffmpeg.Test
                 Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
         }
+
+        /// <summary>
+        /// Check seeking.
+        /// </summary>
+        [Test]
+        public void Test002_1()
+        {
+            var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            if (sourceChannel == 0)
+            {
+                Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            var channelInfo = default(ChannelInfo);
+            if (!Bass.ChannelGetInfo(sourceChannel, out channelInfo))
+            {
+                Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
+
+            if (!Bass.ChannelPlay(sourceChannel))
+            {
+                Assert.Fail(string.Format("Failed to play the playback stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            var channelLength = Bass.ChannelGetLength(sourceChannel);
+            var channelLengthSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelLength);
+
+            Bass.ChannelSetPosition(sourceChannel, Bass.ChannelSeconds2Bytes(sourceChannel, channelLengthSeconds - 10), PositionFlags.Bytes);
+
+            Thread.Sleep(2000);
+
+            {
+                var channelPosition = Bass.ChannelGetPosition(sourceChannel);
+                var channelPositionSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelPosition);
+
+                Assert.IsTrue(channelPositionSeconds >= channelLengthSeconds - 10);
+            }
+
+            Thread.Sleep(10000);
+
+            {
+                var channelPosition = Bass.ChannelGetPosition(sourceChannel);
+                var channelPositionSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelPosition);
+
+                Assert.AreEqual(Math.Floor(this.Length), Math.Floor(channelPositionSeconds));
+            }
+
+            if (!Bass.StreamFree(sourceChannel))
+            {
+                Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+        }
+
+        /// <summary>
+        /// Check seeking.
+        /// </summary>
+        [Test]
+        public void Test002_2()
+        {
+            var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            if (sourceChannel == 0)
+            {
+                Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            var channelInfo = default(ChannelInfo);
+            if (!Bass.ChannelGetInfo(sourceChannel, out channelInfo))
+            {
+                Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
+
+            if (!Bass.ChannelPlay(sourceChannel))
+            {
+                Assert.Fail(string.Format("Failed to play the playback stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            var channelLength = Bass.ChannelGetLength(sourceChannel);
+            var channelLengthSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelLength);
+
+            Bass.ChannelSetPosition(sourceChannel, channelLength, PositionFlags.Bytes);
+
+            var channelPosition = Bass.ChannelGetPosition(sourceChannel);
+            var channelPositionSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelPosition);
+
+            Assert.AreEqual(Math.Floor(this.Length), Math.Floor(channelPositionSeconds));
+
+            if (!Bass.StreamFree(sourceChannel))
+            {
+                Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+        }
+
+        /// <summary>
+        /// Check length.
+        /// </summary>
+        [Test]
+        public void Test003()
+        {
+            var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            if (sourceChannel == 0)
+            {
+                Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            var channelInfo = default(ChannelInfo);
+            if (!Bass.ChannelGetInfo(sourceChannel, out channelInfo))
+            {
+                Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
+
+            var channelLength = Bass.ChannelGetLength(sourceChannel);
+            var channelLengthSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelLength);
+
+            Assert.AreEqual(Math.Floor(this.Length), Math.Floor(channelLengthSeconds));
+
+            if (!Bass.StreamFree(sourceChannel))
+            {
+                Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+        }
     }
 }

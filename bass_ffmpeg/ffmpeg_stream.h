@@ -16,12 +16,15 @@ typedef struct {
 	DWORD frame_position;
 	DWORD frame_count;
 	SwrContext* resample_context;
+	DWORD flags;
 } FFMPEG_STREAM;
 
 BOOL ffmpeg_stream_create(const char* file, FFMPEG_STREAM** const stream, const DWORD flags);
 
 BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream);
 
-DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD length, DWORD flags);
+DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD length);
+
+QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream);
 
 BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream);
