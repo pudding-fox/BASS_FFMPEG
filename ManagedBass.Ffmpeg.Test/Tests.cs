@@ -6,28 +6,34 @@ using System.Threading;
 
 namespace ManagedBass.Ffmpeg.Test
 {
-    [TestFixture(BassFlags.Default, @"..\..\Media\01 In Chains.dts", 412.661)]
-    [TestFixture(BassFlags.Default, @"..\..\Media\01 All Night Long.dts", 167.027)]
-    [TestFixture(BassFlags.Default, @"..\..\Media\01 World In My Eyes.dts", 266.613)]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 In Chains.dts", 412.661)]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 All Night Long.dts", 167.027)]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 World In My Eyes.dts", 266.613)]
+    [TestFixture(BassFlags.Default, @"..\..\Media\01 In Chains.dts", "00:06:45")]
+    [TestFixture(BassFlags.Default, @"..\..\Media\01 All Night Long.dts", "00:02:47")]
+    [TestFixture(BassFlags.Default, @"..\..\Media\01 World In My Eyes.dts", "00:04:22")]
+    [TestFixture(BassFlags.Default, @"..\..\Media\01 Intro.m4a", "00:01:18")]
+    [TestFixture(BassFlags.Default, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
+    [TestFixture(BassFlags.Default, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 In Chains.dts", "00:06:45")]
+    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 All Night Long.dts", "00:02:47")]
+    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 World In My Eyes.dts", "00:04:22")]
+    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 Intro.m4a", "00:01:18")]
+    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
+    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
     public class Tests
     {
         private static readonly string CurrentDirectory = Path.GetDirectoryName(typeof(Tests).Assembly.Location);
 
-        public Tests(BassFlags bassFlags, string fileName, double length)
+        public Tests(BassFlags bassFlags, string fileName, string length)
         {
             this.BassFlags = bassFlags;
             this.FileName = fileName;
-            this.Length = length;
+            this.Length = TimeSpan.Parse(length);
         }
 
         public BassFlags BassFlags { get; private set; }
 
         public string FileName { get; private set; }
 
-        public double Length { get; private set; }
+        public TimeSpan Length { get; private set; }
 
         [SetUp]
         public void SetUp()
@@ -141,7 +147,7 @@ namespace ManagedBass.Ffmpeg.Test
                 var channelPosition = Bass.ChannelGetPosition(sourceChannel);
                 var channelPositionSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelPosition);
 
-                Assert.AreEqual(Math.Floor(this.Length), Math.Floor(channelPositionSeconds));
+                Assert.AreEqual(Math.Floor(this.Length.TotalSeconds), Math.Floor(channelPositionSeconds));
             }
 
             if (!Bass.StreamFree(sourceChannel))
@@ -183,7 +189,7 @@ namespace ManagedBass.Ffmpeg.Test
             var channelPosition = Bass.ChannelGetPosition(sourceChannel);
             var channelPositionSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelPosition);
 
-            Assert.AreEqual(Math.Floor(this.Length), Math.Floor(channelPositionSeconds));
+            Assert.AreEqual(Math.Floor(this.Length.TotalSeconds), Math.Floor(channelPositionSeconds));
 
             if (!Bass.StreamFree(sourceChannel))
             {
@@ -214,7 +220,7 @@ namespace ManagedBass.Ffmpeg.Test
             var channelLength = Bass.ChannelGetLength(sourceChannel);
             var channelLengthSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelLength);
 
-            Assert.AreEqual(Math.Floor(this.Length), Math.Floor(channelLengthSeconds));
+            Assert.AreEqual(Math.Floor(this.Length.TotalSeconds), Math.Floor(channelLengthSeconds));
 
             if (!Bass.StreamFree(sourceChannel))
             {

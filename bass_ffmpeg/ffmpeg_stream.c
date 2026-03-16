@@ -182,23 +182,31 @@ QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
 		/ stream->stream->time_base.den;
 }
 
+QWORD ffmpeg_file_length(FFMPEG_STREAM* const stream) {
+	return avio_size(stream->format_context->pb);
+}
+
 BOOL ffmpeg_stream_can_seek(FFMPEG_STREAM* const stream, QWORD position) {
 	return position >= 0 && position <= ffmpeg_stream_length(stream);
 }
 
 BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
-	QWORD timestamp = position
-		* stream->codec_context->sample_rate
-		* stream->codec_context->channels
-		* bass_bytes_per_sample(stream->flags)
-		/ stream->stream->time_base.den;
-	DWORD flags = AVSEEK_FLAG_ANY;
-	DWORD result = av_seek_frame(
-		stream->format_context,
-		stream->stream_index,
-		av_index_search_timestamp(stream->stream, timestamp, flags),
-		flags
-	);
+	DWORD result;
+	DWORD flags = AVSEEK_FLAG_BYTE | AVSEEK_FLAG_ANY;
+	if (position == 0) {
+		result = avformat_seek_file(stream->format_context, stream->stream_index, INT64_MIN, INT64_MIN, INT64_MAX, flags);
+	}
+	else {
+		QWORD stream_length = ffmpeg_stream_length(stream);
+		QWORD file_length = ffmpeg_file_length(stream);
+		if (position == stream_length) {
+			result = avformat_seek_file(stream->format_context, stream->stream_index, INT64_MIN, file_length, INT64_MAX, flags);
+		}
+		else {
+			DOUBLE offset = position * ((DOUBLE)file_length / stream_length);
+			result = avformat_seek_file(stream->format_context, stream->stream_index, INT64_MIN, (QWORD)offset, INT64_MAX, flags);
+		}
+	}
 	if (result < 0) {
 		return FALSE;
 	}
@@ -206,6 +214,8 @@ BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
 }
 
 BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {
+	stream->frame_count = 0;
+	stream->frame_position = 0;
 	avcodec_flush_buffers(stream->codec_context);
 	return TRUE;
 }

@@ -46,6 +46,15 @@
 		<None Include="..\Media\01 World In My Eyes.dts" Link="Media\01 World In My Eyes.dts">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+    <None Include="..\Media\01 Intro.m4a" Link="Media\01 Intro.m4a">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Media\02 Hot Dog.m4a" Link="Media\02 Hot Dog.m4a">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Media\03 My Generation.m4a" Link="Media\03 My Generation.m4a">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
 	</ItemGroup>
 
 	<ItemGroup>

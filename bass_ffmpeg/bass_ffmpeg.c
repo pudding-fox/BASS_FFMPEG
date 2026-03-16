@@ -40,7 +40,7 @@ const ADDON_FUNCTIONS addon_functions = {
 };
 
 static const BASS_PLUGINFORM plugin_form[] = {
-	{ BASS_CTYPE_STREAM_FFMPEG, "FFMPEG", "*" }
+	{ BASS_CTYPE_STREAM_FFMPEG, "FFMPEG", "*.*" }
 };
 
 static const BASS_PLUGININFO plugin_info = { BASSFFMPEGVERSION, 1, plugin_form };
