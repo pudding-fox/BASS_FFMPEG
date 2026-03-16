@@ -227,5 +227,22 @@ namespace ManagedBass.Ffmpeg.Test
                 Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
         }
+
+        [TestCase(100)]
+        public void Test004(int iterations)
+        {
+            for (var a = 0; a < iterations; a++)
+            {
+                var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+                if (sourceChannel == 0)
+                {
+                    Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+                }
+                if (!Bass.StreamFree(sourceChannel))
+                {
+                    Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+                }
+            }
+        }
     }
 }
