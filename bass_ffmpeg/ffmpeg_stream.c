@@ -224,10 +224,13 @@ BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {
 	if (stream->resample_context) {
 		swr_free(&stream->resample_context);
 	}
-	for (DWORD a = 0; a < FFMPEG_STREAM_FRAME_COUNT; a++) {
-		if (stream->frames[a]) {
-			av_frame_free(&stream->frames[a]);
+	if (stream->frames) {
+		for (DWORD a = 0; a < FFMPEG_STREAM_FRAME_COUNT; a++) {
+			if (stream->frames[a]) {
+				av_frame_free(&stream->frames[a]);
+			}
 		}
+		free(stream->frames);
 	}
 	if (stream->packet) {
 		av_packet_free(&stream->packet);
@@ -235,5 +238,6 @@ BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {
 	if (stream->format_context) {
 		avformat_close_input(&stream->format_context);
 	}
+	free(stream);
 	return TRUE;
 }

@@ -6,28 +6,37 @@ using System.Threading;
 
 namespace ManagedBass.Ffmpeg.Test
 {
-    [TestFixture(BassFlags.Default, @"..\..\Media\01 In Chains.dts", "00:06:45")]
-    [TestFixture(BassFlags.Default, @"..\..\Media\01 All Night Long.dts", "00:02:47")]
-    [TestFixture(BassFlags.Default, @"..\..\Media\01 World In My Eyes.dts", "00:04:22")]
-    [TestFixture(BassFlags.Default, @"..\..\Media\01 Intro.m4a", "00:01:18")]
-    [TestFixture(BassFlags.Default, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
-    [TestFixture(BassFlags.Default, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 In Chains.dts", "00:06:45")]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 All Night Long.dts", "00:02:47")]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 World In My Eyes.dts", "00:04:22")]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\01 Intro.m4a", "00:01:18")]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
-    [TestFixture(BassFlags.Default | BassFlags.Float, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    [TestFixture(false, BassFlags.Default, @"..\..\Media\01 In Chains.dts", "00:06:45")]
+    [TestFixture(false, BassFlags.Default, @"..\..\Media\01 All Night Long.dts", "00:02:47")]
+    [TestFixture(false, BassFlags.Default, @"..\..\Media\01 World In My Eyes.dts", "00:04:22")]
+    [TestFixture(false, BassFlags.Default, @"..\..\Media\01 Intro.m4a", "00:01:18")]
+    [TestFixture(false, BassFlags.Default, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
+    [TestFixture(false, BassFlags.Default, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 In Chains.dts", "00:06:45")]
+    [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 All Night Long.dts", "00:02:47")]
+    [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 World In My Eyes.dts", "00:04:22")]
+    [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 Intro.m4a", "00:01:18")]
+    [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
+    [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    [TestFixture(true, BassFlags.Default, @"..\..\Media\01 Intro.m4a", "00:01:18")]
+    [TestFixture(true, BassFlags.Default, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
+    [TestFixture(true, BassFlags.Default, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    [TestFixture(true, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 Intro.m4a", "00:01:18")]
+    [TestFixture(true, BassFlags.Default | BassFlags.Float, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
+    [TestFixture(true, BassFlags.Default | BassFlags.Float, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
     public class Tests
     {
         private static readonly string CurrentDirectory = Path.GetDirectoryName(typeof(Tests).Assembly.Location);
 
-        public Tests(BassFlags bassFlags, string fileName, string length)
+        public Tests(bool plugin, BassFlags bassFlags, string fileName, string length)
         {
+            this.Plugin = plugin;
             this.BassFlags = bassFlags;
             this.FileName = fileName;
             this.Length = TimeSpan.Parse(length);
         }
+
+        public bool Plugin { get; private set; }
 
         public BassFlags BassFlags { get; private set; }
 
@@ -55,7 +64,15 @@ namespace ManagedBass.Ffmpeg.Test
         [Test]
         public void Test001()
         {
-            var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            var sourceChannel = default(int);
+            if (this.Plugin)
+            {
+                sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
+            else
+            {
+                sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
             if (sourceChannel == 0)
             {
                 Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
@@ -66,7 +83,6 @@ namespace ManagedBass.Ffmpeg.Test
             {
                 Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
-
             Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
 
             if (!Bass.ChannelPlay(sourceChannel))
@@ -108,7 +124,15 @@ namespace ManagedBass.Ffmpeg.Test
         [Test]
         public void Test002_1()
         {
-            var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            var sourceChannel = default(int);
+            if (this.Plugin)
+            {
+                sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
+            else
+            {
+                sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
             if (sourceChannel == 0)
             {
                 Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
@@ -119,7 +143,6 @@ namespace ManagedBass.Ffmpeg.Test
             {
                 Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
-
             Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
 
             if (!Bass.ChannelPlay(sourceChannel))
@@ -162,7 +185,15 @@ namespace ManagedBass.Ffmpeg.Test
         [Test]
         public void Test002_2()
         {
-            var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            var sourceChannel = default(int);
+            if (this.Plugin)
+            {
+                sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
+            else
+            {
+                sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
             if (sourceChannel == 0)
             {
                 Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
@@ -173,7 +204,6 @@ namespace ManagedBass.Ffmpeg.Test
             {
                 Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
-
             Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
 
             if (!Bass.ChannelPlay(sourceChannel))
@@ -203,7 +233,15 @@ namespace ManagedBass.Ffmpeg.Test
         [Test]
         public void Test003()
         {
-            var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            var sourceChannel = default(int);
+            if (this.Plugin)
+            {
+                sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
+            else
+            {
+                sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+            }
             if (sourceChannel == 0)
             {
                 Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
@@ -214,7 +252,6 @@ namespace ManagedBass.Ffmpeg.Test
             {
                 Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
-
             Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
 
             var channelLength = Bass.ChannelGetLength(sourceChannel);
@@ -233,11 +270,27 @@ namespace ManagedBass.Ffmpeg.Test
         {
             for (var a = 0; a < iterations; a++)
             {
-                var sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+                var sourceChannel = default(int);
+                if (this.Plugin)
+                {
+                    sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+                }
+                else
+                {
+                    sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+                }
                 if (sourceChannel == 0)
                 {
                     Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
                 }
+
+                var channelInfo = default(ChannelInfo);
+                if (!Bass.ChannelGetInfo(sourceChannel, out channelInfo))
+                {
+                    Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+                }
+                Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
+
                 if (!Bass.StreamFree(sourceChannel))
                 {
                     Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));

@@ -43,7 +43,7 @@ static const BASS_PLUGINFORM plugin_form[] = {
 	{ BASS_CTYPE_STREAM_FFMPEG, "FFMPEG", NULL }
 };
 
-static const BASS_PLUGININFO plugin_info = { BASSFFMPEGVERSION, 1, plugin_form };
+static const BASS_PLUGININFO plugin_info = { BASSFFMPEGVERSION, 0, plugin_form };
 
 BOOL WINAPI DllMain(HANDLE dll, DWORD reason, LPVOID reserved) {
 	switch (reason) {
@@ -73,6 +73,16 @@ HSTREAM WINAPI BASS_FFMPEG_StreamCreate(BASSFILE file, DWORD flags) {
 	FFMPEG_STREAM* stream;
 	BOOL unicode = FALSE;
 	const char* file_name = bassfunc->file.GetFileName(file, &unicode);
+	if (!file_name) {
+		error(BASS_ERROR_NOTFILE);
+	}
+	if (unicode) {
+		const char unicode_filename[MAX_PATH];
+		if (WideCharToMultiByte(CP_ACP, 0, (LPCWSTR)file_name, -1, unicode_filename, MAX_PATH, NULL, NULL) <= 0) {
+			error(BASS_ERROR_NOTFILE);
+		}
+		file_name = unicode_filename;
+	}
 	if (!ffmpeg_stream_create(file_name, &stream, flags)) {
 		error(BASS_ERROR_FILEFORM);
 	}
