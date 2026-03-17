@@ -76,17 +76,23 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
-	(*stream)->frames = calloc(sizeof(AVFrame*), FFMPEG_STREAM_FRAME_COUNT);
+	(*stream)->frames = calloc(sizeof(FFMPEG_FRAME*), FFMPEG_STREAM_FRAME_COUNT);
 	if (!(*stream)->frames) {
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
 	for (DWORD a = 0; a < FFMPEG_STREAM_FRAME_COUNT; a++) {
-		(*stream)->frames[a] = av_frame_alloc();
+		(*stream)->frames[a] = calloc(sizeof(FFMPEG_FRAME), 1);
 		if (!(*stream)->frames[a]) {
 			ffmpeg_stream_free(*stream);
 			return FALSE;
 		}
+		(*stream)->frames[a]->frame = av_frame_alloc();
+		if (!(*stream)->frames[a]->frame) {
+			ffmpeg_stream_free(*stream);
+			return FALSE;
+		}
+		(*stream)->frames[a]->position = 0;
 	}
 	(*stream)->resample_context = swr_alloc();
 	if (!(*stream)->resample_context) {
@@ -120,6 +126,35 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 	return TRUE;
 }
 
+BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, FFMPEG_FRAME* frame) {
+	DWORD samples_per_frame = frame->frame->nb_samples * frame->frame->channels;
+	DWORD bytes_per_frame = samples_per_frame * bass_bytes_per_sample(stream->flags);
+	DWORD buffer_size = bytes_per_frame * 2; //TODO: No idea why we need to multiply by 2, but swr_convert encounters a buffer overflow otherwise.
+	if (!frame->buffer) {
+		frame->buffer = malloc(buffer_size);
+		if (!frame->buffer) {
+			return FALSE;
+		}
+	}
+	else if (frame->count < bytes_per_frame) {
+		free(frame->buffer);
+		frame->buffer = malloc(buffer_size);
+		if (!frame->buffer) {
+			return FALSE;
+		}
+	}
+	DWORD count = swr_convert(
+		stream->resample_context,
+		&(BYTE*)frame->buffer,
+		frame->frame->nb_samples,
+		(BYTE**)frame->frame->data,
+		frame->frame->nb_samples
+	);
+	frame->position = 0;
+	frame->count = bytes_per_frame;
+	return TRUE;
+}
+
 BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 	int result;
 retry:
@@ -141,9 +176,12 @@ retry:
 	stream->frame_position = 0;
 	stream->frame_count = 0;
 	do {
-		AVFrame* frame = stream->frames[stream->frame_count];
-		result = avcodec_receive_frame(stream->codec_context, frame);
+		FFMPEG_FRAME* frame = stream->frames[stream->frame_count];
+		result = avcodec_receive_frame(stream->codec_context, frame->frame);
 		if (result < 0) {
+			break;
+		}
+		if (!ffmpeg_stream_resample(stream, frame)) {
 			break;
 		}
 		stream->frame_count++;
@@ -151,25 +189,37 @@ retry:
 	return TRUE;
 }
 
+DWORD ffmpeg_stream_read_frame(FFMPEG_STREAM* const stream, FFMPEG_FRAME* frame, void* buffer, const DWORD length) {
+	DWORD count = frame->count - frame->position;
+	if (!count) {
+		return 0;
+	}
+	if (count > length) {
+		count = length;
+	}
+	memcpy(buffer, (BYTE*)frame->buffer + frame->position, count);
+	frame->position += count;
+	return count;
+}
+
 DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD length) {
 	DWORD position = 0;
 	DWORD remaining = length;
-	while (stream->frame_position < stream->frame_count) {
-		AVFrame* frame = stream->frames[stream->frame_position];
-		DWORD samples_per_frame = frame->nb_samples * frame->channels;
-		DWORD bytes_per_frame = samples_per_frame * bass_bytes_per_sample(stream->flags);
-		if (bytes_per_frame > remaining) {
-			break;
+	while (stream->frame_position < stream->frame_count && remaining > 0) {
+		FFMPEG_FRAME* frame = stream->frames[stream->frame_position];
+		DWORD count = ffmpeg_stream_read_frame(stream, frame, (BYTE*)buffer + position, remaining);
+		if (count) {
+			position += count;
+			remaining -= count;
 		}
-		DWORD sample_count = swr_convert(
-			stream->resample_context,
-			&(BYTE*)buffer,
-			frame->nb_samples,
-			(BYTE**)frame->data,
-			frame->nb_samples
-		);
-		stream->frame_position++;
-		remaining -= bytes_per_frame;
+		else {
+			if (frame->position == frame->count) {
+				stream->frame_position++;
+			}
+			else {
+				break;
+			}
+		}
 	}
 	return length - remaining;
 }
@@ -227,7 +277,13 @@ BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {
 	if (stream->frames) {
 		for (DWORD a = 0; a < FFMPEG_STREAM_FRAME_COUNT; a++) {
 			if (stream->frames[a]) {
-				av_frame_free(&stream->frames[a]);
+				if (stream->frames[a]->frame) {
+					av_frame_free(&stream->frames[a]->frame);
+				}
+				if (stream->frames[a]->buffer) {
+					free(stream->frames[a]->buffer);
+				}
+				free(stream->frames[a]);
 			}
 		}
 		free(stream->frames);
