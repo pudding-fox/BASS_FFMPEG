@@ -12,18 +12,22 @@ namespace ManagedBass.Ffmpeg.Test
     [TestFixture(false, BassFlags.Default, @"..\..\Media\01 Intro.m4a", "00:01:18")]
     [TestFixture(false, BassFlags.Default, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
     [TestFixture(false, BassFlags.Default, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    //[TestFixture(false, BassFlags.Default, @"..\..\Media\01 The Revealing Science of God Dance of the Dawn.mka", "00:22:28")] //TODO: Too large to commit.
     [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 In Chains.dts", "00:06:45")]
     [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 All Night Long.dts", "00:02:47")]
     [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 World In My Eyes.dts", "00:04:22")]
     [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 Intro.m4a", "00:01:18")]
     [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
     [TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    //[TestFixture(false, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 The Revealing Science of God Dance of the Dawn.mka", "00:22:28")] //TODO: Too large to commit.
     [TestFixture(true, BassFlags.Default, @"..\..\Media\01 Intro.m4a", "00:01:18")]
     [TestFixture(true, BassFlags.Default, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
     [TestFixture(true, BassFlags.Default, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    //[TestFixture(true, BassFlags.Default, @"..\..\Media\01 The Revealing Science of God Dance of the Dawn.mka", "00:22:28")] //TODO: Too large to commit.
     [TestFixture(true, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 Intro.m4a", "00:01:18")]
     [TestFixture(true, BassFlags.Default | BassFlags.Float, @"..\..\Media\02 Hot Dog.m4a", "00:03:50")]
     [TestFixture(true, BassFlags.Default | BassFlags.Float, @"..\..\Media\03 My Generation.m4a", "00:03:40")]
+    //[TestFixture(true, BassFlags.Default | BassFlags.Float, @"..\..\Media\01 The Revealing Science of God Dance of the Dawn.mka", "00:22:28")] //TODO: Too large to commit.
     public class Tests
     {
         private static readonly string CurrentDirectory = Path.GetDirectoryName(typeof(Tests).Assembly.Location);

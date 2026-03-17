@@ -225,11 +225,19 @@ DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD 
 }
 
 QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
-	return stream->stream->duration
-		* stream->codec_context->sample_rate
-		* stream->codec_context->channels
-		* bass_bytes_per_sample(stream->flags)
-		/ stream->stream->time_base.den;
+	if (stream->stream->duration == AV_NOPTS_VALUE) {
+
+	}
+	else {
+		DOUBLE seconds = stream->stream->duration * av_q2d(stream->stream->time_base);
+		DWORD bytes_per_sample = bass_bytes_per_sample(stream->flags);
+		QWORD pcm_bytes =
+			seconds *
+			stream->codec_context->sample_rate *
+			stream->codec_context->channels *
+			bytes_per_sample;
+		return pcm_bytes;
+	}
 }
 
 QWORD ffmpeg_file_length(FFMPEG_STREAM* const stream) {
