@@ -139,7 +139,7 @@ DWORD WINAPI BASS_FFMPEG_StreamProc(HSTREAM handle, void* buffer, DWORD length, 
 QWORD WINAPI BASS_FFMPEG_GetLength(void* inst, DWORD mode) {
 	FFMPEG_STREAM* stream = inst;
 	if (mode == BASS_POS_BYTE) {
-		noerrorn(ffmpeg_stream_length(stream));
+		noerrorn(stream->length);
 	}
 	else {
 		errorn(BASS_ERROR_NOTAVAIL);

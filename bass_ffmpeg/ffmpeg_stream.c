@@ -27,10 +27,10 @@ enum AVSampleFormat bass_sample_format(const DWORD flags) {
 
 DWORD bass_bytes_per_sample(const DWORD flags) {
 	if ((flags & BASS_SAMPLE_FLOAT) == BASS_SAMPLE_FLOAT) {
-		return 4;
+		return sizeof(FLOAT);
 	}
 	else {
-		return 2;
+		return sizeof(SHORT);
 	}
 }
 
@@ -118,11 +118,12 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
+	(*stream)->flags = flags;
+	(*stream)->length = ffmpeg_stream_length(*stream);
 	if (!ffmpeg_stream_update(*stream)) {
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
-	(*stream)->flags = flags;
 	return TRUE;
 }
 
@@ -156,7 +157,7 @@ BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, FFMPEG_FRAME* frame) {
 }
 
 BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
-	int result;
+	DWORD result;
 retry:
 	if (av_read_frame(stream->format_context, stream->packet) < 0) {
 		return FALSE;
@@ -225,18 +226,24 @@ DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD 
 }
 
 QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
+	DWORD bytes_per_sample = bass_bytes_per_sample(stream->flags);
 	if (stream->stream->duration == AV_NOPTS_VALUE) {
-
-	}
-	else {
-		DOUBLE seconds = stream->stream->duration * av_q2d(stream->stream->time_base);
-		DWORD bytes_per_sample = bass_bytes_per_sample(stream->flags);
-		QWORD pcm_bytes =
-			seconds *
+		QWORD length =
+			(stream->format_context->duration / AV_TIME_BASE) *
 			stream->codec_context->sample_rate *
 			stream->codec_context->channels *
 			bytes_per_sample;
-		return pcm_bytes;
+		return length;
+	}
+	else {
+		DOUBLE length =
+			stream->stream->duration * 
+			av_q2d(stream->stream->time_base) *
+			stream->codec_context->sample_rate *
+			stream->codec_context->channels *
+			bytes_per_sample;
+		return (QWORD)length;
+
 	}
 }
 

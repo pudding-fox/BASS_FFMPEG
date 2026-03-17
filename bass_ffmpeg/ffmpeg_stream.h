@@ -24,6 +24,7 @@ typedef struct {
 	DWORD frame_count;
 	SwrContext* resample_context;
 	DWORD flags;
+	QWORD length;
 } FFMPEG_STREAM;
 
 BOOL ffmpeg_stream_create(const char* file, FFMPEG_STREAM** const stream, const DWORD flags);
