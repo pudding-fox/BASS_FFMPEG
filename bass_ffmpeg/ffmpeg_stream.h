@@ -5,7 +5,6 @@
 #define FFMPEG_STREAM_FRAME_COUNT 16
 
 typedef struct {
-	AVFrame* frame;
 	void* buffer;
 	DWORD position;
 	DWORD count;
@@ -18,8 +17,7 @@ typedef struct {
 	AVStream* stream;
 	DWORD stream_index;
 	AVCodec* codec;
-	AVPacket* packet;
-	FFMPEG_FRAME** frames;
+	FFMPEG_FRAME frames[FFMPEG_STREAM_FRAME_COUNT];
 	DWORD frame_position;
 	DWORD frame_count;
 	SwrContext* resample_context;

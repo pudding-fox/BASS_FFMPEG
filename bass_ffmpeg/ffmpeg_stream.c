@@ -71,29 +71,6 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
-	(*stream)->packet = av_packet_alloc();
-	if (!(*stream)->packet) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	(*stream)->frames = calloc(sizeof(FFMPEG_FRAME*), FFMPEG_STREAM_FRAME_COUNT);
-	if (!(*stream)->frames) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	for (DWORD a = 0; a < FFMPEG_STREAM_FRAME_COUNT; a++) {
-		(*stream)->frames[a] = calloc(sizeof(FFMPEG_FRAME), 1);
-		if (!(*stream)->frames[a]) {
-			ffmpeg_stream_free(*stream);
-			return FALSE;
-		}
-		(*stream)->frames[a]->frame = av_frame_alloc();
-		if (!(*stream)->frames[a]->frame) {
-			ffmpeg_stream_free(*stream);
-			return FALSE;
-		}
-		(*stream)->frames[a]->position = 0;
-	}
 	(*stream)->resample_context = swr_alloc();
 	if (!(*stream)->resample_context) {
 		ffmpeg_stream_free(*stream);
@@ -127,67 +104,86 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 	return TRUE;
 }
 
-BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, FFMPEG_FRAME* frame) {
-	DWORD samples_per_frame = frame->frame->nb_samples * frame->frame->channels;
+BOOL ffmpeg_buffer_alloc(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG_FRAME* destination) {
+	DWORD samples_per_frame = source->nb_samples * source->channels;
 	DWORD bytes_per_frame = samples_per_frame * bass_bytes_per_sample(stream->flags);
 	DWORD buffer_size = bytes_per_frame * 2; //TODO: No idea why we need to multiply by 2, but swr_convert encounters a buffer overflow otherwise.
-	if (!frame->buffer) {
-		frame->buffer = malloc(buffer_size);
-		if (!frame->buffer) {
+	if (!destination->buffer) {
+		destination->buffer = malloc(buffer_size);
+		if (!destination->buffer) {
 			return FALSE;
 		}
+		destination->count = bytes_per_frame;
 	}
-	else if (frame->count < bytes_per_frame) {
-		free(frame->buffer);
-		frame->buffer = malloc(buffer_size);
-		if (!frame->buffer) {
+	else if (destination->count < bytes_per_frame) {
+		free(destination->buffer);
+		destination->buffer = malloc(buffer_size);
+		if (!destination->buffer) {
 			return FALSE;
 		}
+		destination->count = bytes_per_frame;
+	}
+	return TRUE;
+}
+
+BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG_FRAME* destination) {
+	if (!ffmpeg_buffer_alloc(stream, source, destination)) {
+		return FALSE;
 	}
 	DWORD count = swr_convert(
 		stream->resample_context,
-		&(BYTE*)frame->buffer,
-		frame->frame->nb_samples,
-		(BYTE**)frame->frame->data,
-		frame->frame->nb_samples
+		&(BYTE*)destination->buffer,
+		source->nb_samples,
+		(BYTE**)source->data,
+		source->nb_samples
 	);
-	frame->position = 0;
-	frame->count = bytes_per_frame;
+	destination->position = 0;
 	return TRUE;
 }
 
 BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
-	DWORD result;
+	INT result;
+	BOOL success = TRUE;
+	AVPacket* packet = av_packet_alloc();
+	AVFrame* frame = av_frame_alloc();
+	goto begin;
 retry:
-	if (av_read_frame(stream->format_context, stream->packet) < 0) {
-		return FALSE;
+	av_packet_unref(packet);
+begin:
+	if (av_read_frame(stream->format_context, packet) < 0) {
+		success = FALSE;
+		goto done;
 	}
-	if (stream->packet->stream_index != stream->stream_index) {
+	if (packet->stream_index != stream->stream_index) {
 		goto retry;
 	}
-	result = avcodec_send_packet(stream->codec_context, stream->packet);
+	result = avcodec_send_packet(stream->codec_context, packet);
 	if (result < 0) {
 		if (result == AVERROR(EAGAIN)) {
 			goto retry;
 		}
 		else {
-			return FALSE;
+			success = FALSE;
+			goto done;
 		}
 	}
 	stream->frame_position = 0;
 	stream->frame_count = 0;
 	do {
-		FFMPEG_FRAME* frame = stream->frames[stream->frame_count];
-		result = avcodec_receive_frame(stream->codec_context, frame->frame);
+		result = avcodec_receive_frame(stream->codec_context, frame);
 		if (result < 0) {
 			break;
 		}
-		if (!ffmpeg_stream_resample(stream, frame)) {
-			break;
+		if (!ffmpeg_stream_resample(stream, frame, &stream->frames[stream->frame_count])) {
+			success = FALSE;
+			goto done;
 		}
 		stream->frame_count++;
 	} while (stream->frame_count < FFMPEG_STREAM_FRAME_COUNT);
-	return TRUE;
+done:
+	av_frame_free(&frame);
+	av_packet_free(&packet);
+	return success;
 }
 
 DWORD ffmpeg_stream_read_frame(FFMPEG_STREAM* const stream, FFMPEG_FRAME* frame, void* buffer, const DWORD length) {
@@ -207,7 +203,7 @@ DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD 
 	DWORD position = 0;
 	DWORD remaining = length;
 	while (stream->frame_position < stream->frame_count && remaining > 0) {
-		FFMPEG_FRAME* frame = stream->frames[stream->frame_position];
+		FFMPEG_FRAME* frame = &stream->frames[stream->frame_position];
 		DWORD count = ffmpeg_stream_read_frame(stream, frame, (BYTE*)buffer + position, remaining);
 		if (count) {
 			position += count;
@@ -303,7 +299,7 @@ BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
 		stream->stream->time_base
 	);
 	DWORD flags = AVSEEK_FLAG_BACKWARD;
-	DWORD result = av_seek_frame(stream->format_context, stream->stream_index, timestamp, flags);
+	INT result = av_seek_frame(stream->format_context, stream->stream_index, timestamp, flags);
 	if (result < 0) {
 		return FALSE;
 	}
@@ -322,22 +318,10 @@ BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {
 	if (stream->resample_context) {
 		swr_free(&stream->resample_context);
 	}
-	if (stream->frames) {
-		for (DWORD a = 0; a < FFMPEG_STREAM_FRAME_COUNT; a++) {
-			if (stream->frames[a]) {
-				if (stream->frames[a]->frame) {
-					av_frame_free(&stream->frames[a]->frame);
-				}
-				if (stream->frames[a]->buffer) {
-					free(stream->frames[a]->buffer);
-				}
-				free(stream->frames[a]);
-			}
+	for (DWORD a = 0; a < FFMPEG_STREAM_FRAME_COUNT; a++) {
+		if (stream->frames[a].buffer) {
+			free(stream->frames[a].buffer);
 		}
-		free(stream->frames);
-	}
-	if (stream->packet) {
-		av_packet_free(&stream->packet);
 	}
 	if (stream->format_context) {
 		avformat_close_input(&stream->format_context);

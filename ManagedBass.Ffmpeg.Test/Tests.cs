@@ -272,16 +272,19 @@ namespace ManagedBass.Ffmpeg.Test
         [TestCase(100)]
         public void Test004(int iterations)
         {
+            const int BASS_ERROR_UNKNOWN = -1;
+            const int BASS_STREAMPROC_END = -2147483648;
+
             for (var a = 0; a < iterations; a++)
             {
                 var sourceChannel = default(int);
                 if (this.Plugin)
                 {
-                    sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+                    sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags | BassFlags.Decode);
                 }
                 else
                 {
-                    sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags);
+                    sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags | BassFlags.Decode);
                 }
                 if (sourceChannel == 0)
                 {
@@ -294,6 +297,29 @@ namespace ManagedBass.Ffmpeg.Test
                     Assert.Fail(string.Format("Failed to get stream info: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
                 }
                 Assert.AreEqual(BassFfmpeg.ChannelType, channelInfo.ChannelType);
+
+                var buffer = new byte[1024];
+                do
+                {
+                    var length = Bass.ChannelGetData(sourceChannel, buffer, buffer.Length);
+
+                    switch (length)
+                    {
+                        case BASS_STREAMPROC_END:
+                        case BASS_ERROR_UNKNOWN:
+                            break;
+                    }
+                } while (Bass.ChannelIsActive(sourceChannel) == PlaybackState.Playing);
+
+                var channelLength = Bass.ChannelGetLength(sourceChannel);
+                var channelLengthSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelLength);
+
+                Bass.ChannelSetPosition(sourceChannel, channelLength, PositionFlags.Bytes);
+
+                var channelPosition = Bass.ChannelGetPosition(sourceChannel);
+                var channelPositionSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelPosition);
+
+                Assert.AreEqual(Math.Floor(this.Length.TotalSeconds), Math.Floor(channelPositionSeconds));
 
                 if (!Bass.StreamFree(sourceChannel))
                 {
