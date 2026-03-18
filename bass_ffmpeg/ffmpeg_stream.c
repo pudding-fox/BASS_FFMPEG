@@ -256,20 +256,49 @@ QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
 			stream->codec_context->channels *
 			bytes_per_sample;
 		return (QWORD)length;
-
 	}
 }
 
 BOOL ffmpeg_stream_can_seek(FFMPEG_STREAM* const stream, QWORD position) {
-	return position >= 0 && position <= ffmpeg_stream_length(stream);
+	return position >= 0 && position <= stream->length;
+}
+
+BOOL ffmpeg_stream_decode_to(FFMPEG_STREAM* const stream, QWORD position) {
+	BOOL result = FALSE;
+	AVPacket* packet = av_packet_alloc();
+	AVFrame* frame = av_frame_alloc();
+	do {
+	retry:
+		if (av_read_frame(stream->format_context, packet) < 0) {
+			goto done;
+		}
+		if (packet->stream_index != stream->stream_index) {
+			continue;
+		}
+		if (avcodec_send_packet(stream->codec_context, packet) < 0) {
+			goto done;
+		}
+		do {
+			if (avcodec_receive_frame(stream->codec_context, frame) < 0) {
+				goto retry;
+			}
+			if ((QWORD)frame->best_effort_timestamp >= position) {
+				result = TRUE;
+				goto done;
+			}
+		} while (TRUE);
+	} while (TRUE);
+done:
+	av_packet_free(&packet);
+	av_frame_free(&frame);
+	return result;
 }
 
 BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
-	QWORD length = ffmpeg_stream_length(stream);
-	QWORD length_seconds = ffmpeg_stream_length_seconds(stream);
-	DOUBLE position_seconds = (position / (DOUBLE)length) * length_seconds;
+	QWORD length = ffmpeg_stream_length_seconds(stream);
+	DOUBLE position_seconds = (position / (DOUBLE)stream->length) * length;
 	QWORD timestamp = av_rescale_q(
-		position_seconds * AV_TIME_BASE,
+		(QWORD)(position_seconds * AV_TIME_BASE),
 		AV_TIME_BASE_Q,
 		stream->stream->time_base
 	);
@@ -278,7 +307,8 @@ BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
 	if (result < 0) {
 		return FALSE;
 	}
-	return TRUE;
+	avcodec_flush_buffers(stream->codec_context);
+	return ffmpeg_stream_decode_to(stream, timestamp);
 }
 
 BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {
