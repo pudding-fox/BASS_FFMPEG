@@ -311,11 +311,6 @@ namespace ManagedBass.Ffmpeg.Test
                     }
                 } while (Bass.ChannelIsActive(sourceChannel) == PlaybackState.Playing);
 
-                var channelLength = Bass.ChannelGetLength(sourceChannel);
-                var channelLengthSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelLength);
-
-                Bass.ChannelSetPosition(sourceChannel, channelLength, PositionFlags.Bytes);
-
                 var channelPosition = Bass.ChannelGetPosition(sourceChannel);
                 var channelPositionSeconds = Bass.ChannelBytes2Seconds(sourceChannel, channelPosition);
 
