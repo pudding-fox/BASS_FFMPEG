@@ -11,7 +11,6 @@ typedef struct {
 } FFMPEG_FRAME;
 
 typedef struct {
-	AVDictionary* options;
 	AVFormatContext* format_context;
 	AVCodecContext* codec_context;
 	AVStream* stream;

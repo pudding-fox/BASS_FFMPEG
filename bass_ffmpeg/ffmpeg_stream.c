@@ -39,7 +39,7 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 	if (!*stream) {
 		return FALSE;
 	}
-	if (avformat_open_input(&(*stream)->format_context, url, NULL, &(*stream)->options) != 0) {
+	if (avformat_open_input(&(*stream)->format_context, url, NULL, NULL) != 0) {
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
