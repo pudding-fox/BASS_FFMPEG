@@ -311,6 +311,9 @@ BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {
 			free(stream->frames[a].buffer);
 		}
 	}
+	if (stream->codec_context) {
+		avcodec_free_context(&stream->codec_context);
+	}
 	if (stream->format_context) {
 		avformat_close_input(&stream->format_context);
 	}
