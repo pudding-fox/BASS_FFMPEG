@@ -141,7 +141,7 @@ VOID WINAPI BASS_FFMPEG_GetInfo(void* inst, BASS_CHANNELINFO* info) {
 	info->origres = stream->stream->codecpar->bits_per_coded_sample;
 }
 
-QWORD  BASS_FFMPEG_GetPosition(void* inst, QWORD position, DWORD mode) {
+QWORD WINAPI BASS_FFMPEG_GetPosition(void* inst, QWORD position, DWORD mode) {
 	FFMPEG_STREAM* stream = inst;
 	if (mode == BASS_POS_BYTE) {
 		noerrorn(stream->position);
