@@ -17,6 +17,7 @@ HSTREAM WINAPI BASS_FFMPEG_StreamCreate(BASSFILE file, DWORD flags);
 DWORD WINAPI BASS_FFMPEG_StreamProc(HSTREAM handle, void* buffer, DWORD length, void* user);
 QWORD WINAPI BASS_FFMPEG_GetLength(void* inst, DWORD mode);
 VOID WINAPI BASS_FFMPEG_GetInfo(void* inst, BASS_CHANNELINFO* info);
+QWORD WINAPI BASS_FFMPEG_GetPosition(void* inst, DWORD mode);
 BOOL WINAPI BASS_FFMPEG_CanSetPosition(void* inst, QWORD position, DWORD mode);
 QWORD WINAPI BASS_FFMPEG_SetPosition(void* inst, QWORD position, DWORD mode);
 
@@ -31,7 +32,7 @@ const ADDON_FUNCTIONS addon_functions = {
 	&BASS_FFMPEG_GetInfo,
 	&BASS_FFMPEG_CanSetPosition,
 	&BASS_FFMPEG_SetPosition,
-	NULL,
+	&BASS_FFMPEG_GetPosition,
 	NULL,
 	NULL,
 	NULL,
@@ -150,6 +151,16 @@ VOID WINAPI BASS_FFMPEG_GetInfo(void* inst, BASS_CHANNELINFO* info) {
 	FFMPEG_STREAM* stream = inst;
 	info->ctype = BASS_CTYPE_STREAM_FFMPEG;
 	info->origres = stream->stream->codecpar->bits_per_coded_sample;
+}
+
+QWORD  BASS_FFMPEG_GetPosition(void* inst, DWORD mode) {
+	FFMPEG_STREAM* stream = inst;
+	if (mode == BASS_POS_BYTE) {
+		noerrorn(stream->position);
+	}
+	else {
+		errorn(BASS_ERROR_NOTAVAIL);
+	}
 }
 
 BOOL WINAPI BASS_FFMPEG_CanSetPosition(void* inst, QWORD position, DWORD mode) {
