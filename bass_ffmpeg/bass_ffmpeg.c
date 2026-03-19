@@ -78,7 +78,7 @@ HSTREAM WINAPI BASS_FFMPEG_StreamCreate(BASSFILE file, DWORD flags) {
 	}
 	if (unicode) {
 		const char unicode_filename[MAX_PATH];
-		if (WideCharToMultiByte(CP_ACP, 0, (LPCWSTR)file_name, -1, unicode_filename, MAX_PATH, NULL, NULL) <= 0) {
+		if (WideCharToMultiByte(CP_ACP, 0, (LPCWSTR)file_name, -1, (LPSTR)unicode_filename, MAX_PATH, NULL, NULL) <= 0) {
 			error(BASS_ERROR_NOTFILE);
 		}
 		file_name = unicode_filename;
@@ -166,7 +166,12 @@ QWORD WINAPI BASS_FFMPEG_SetPosition(void* inst, QWORD position, DWORD mode) {
 	FFMPEG_STREAM* stream = inst;
 	if (mode == BASS_POS_BYTE) {
 		if (ffmpeg_stream_seek(stream, position)) {
-			return position;
+			if (stream->position) {
+				return stream->position;
+			}
+			else {
+				return position;
+			}
 		}
 	}
 	errorn(BASS_ERROR_NOTAVAIL);

@@ -141,6 +141,22 @@ BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG
 	return TRUE;
 }
 
+QWORD ffmpeg_stream_position(FFMPEG_STREAM* const stream, AVFrame* frame) {
+	QWORD timestamp = av_frame_get_best_effort_timestamp(frame);
+	if (timestamp == AV_NOPTS_VALUE) {
+		return 0;
+	}
+	else {
+		DWORD bytes_per_sample = bass_bytes_per_sample(stream->flags);
+		DOUBLE position = timestamp *
+			av_q2d(stream->stream->time_base) *
+			stream->codec_context->sample_rate *
+			stream->codec_context->channels *
+			bytes_per_sample;
+		return (QWORD)position;
+	}
+}
+
 BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 	INT result;
 	BOOL success = TRUE;
@@ -178,6 +194,7 @@ begin:
 			success = FALSE;
 			goto done;
 		}
+		stream->position = ffmpeg_stream_position(stream, frame);
 		stream->frame_count++;
 	} while (stream->frame_count < FFMPEG_STREAM_FRAME_COUNT);
 done:
@@ -259,37 +276,6 @@ BOOL ffmpeg_stream_can_seek(FFMPEG_STREAM* const stream, QWORD position) {
 	return position >= 0 && position <= stream->length;
 }
 
-BOOL ffmpeg_stream_decode_to(FFMPEG_STREAM* const stream, QWORD position) {
-	BOOL result = FALSE;
-	AVPacket* packet = av_packet_alloc();
-	AVFrame* frame = av_frame_alloc();
-	do {
-	retry:
-		if (av_read_frame(stream->format_context, packet) < 0) {
-			goto done;
-		}
-		if (packet->stream_index != stream->stream_index) {
-			continue;
-		}
-		if (avcodec_send_packet(stream->codec_context, packet) < 0) {
-			goto done;
-		}
-		do {
-			if (avcodec_receive_frame(stream->codec_context, frame) < 0) {
-				goto retry;
-			}
-			if ((QWORD)frame->best_effort_timestamp >= position) {
-				result = TRUE;
-				goto done;
-			}
-		} while (TRUE);
-	} while (TRUE);
-done:
-	av_packet_free(&packet);
-	av_frame_free(&frame);
-	return result;
-}
-
 BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
 	QWORD length = ffmpeg_stream_length_seconds(stream);
 	DOUBLE position_seconds = (position / (DOUBLE)stream->length) * length;
@@ -303,8 +289,10 @@ BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
 	if (result < 0) {
 		return FALSE;
 	}
-	avcodec_flush_buffers(stream->codec_context);
-	return ffmpeg_stream_decode_to(stream, timestamp);
+	if (!ffmpeg_stream_reset(stream)) {
+		return FALSE;
+	}
+	return ffmpeg_stream_update(stream);
 }
 
 BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {

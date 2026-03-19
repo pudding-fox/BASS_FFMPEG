@@ -22,6 +22,7 @@ typedef struct {
 	DWORD frame_count;
 	SwrContext* resample_context;
 	DWORD flags;
+	QWORD position;
 	QWORD length;
 } FFMPEG_STREAM;
 
