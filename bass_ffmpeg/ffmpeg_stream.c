@@ -34,12 +34,57 @@ DWORD bass_bytes_per_sample(const DWORD flags) {
 	}
 }
 
-BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const DWORD flags) {
+INT ffmpeg_stream_io_read(void* opaque, BYTE* buffer, INT length) {
+	BASSFILE file = (BASSFILE)opaque;
+	INT result = bassfunc->file.Read(file, buffer, length);
+	return result;
+}
+
+INT64 ffmpeg_stream_io_seek(void* opaque, INT64 position, INT whence) {
+	BASSFILE file = (BASSFILE)opaque;
+	INT64 result;
+	switch (whence) {
+	case AVSEEK_SIZE:
+		result = bassfunc->file.GetPos(file, BASS_FILEPOS_END);
+		break;
+	default:
+		result = bassfunc->file.Seek(file, position);
+		break;
+	}
+	return result;
+}
+
+BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWORD flags) {
 	*stream = calloc(sizeof(FFMPEG_STREAM), 1);
 	if (!*stream) {
 		return FALSE;
 	}
-	if (avformat_open_input(&(*stream)->format_context, url, NULL, NULL) != 0) {
+	(*stream)->buffer = av_malloc(FFMPEG_STREAM_BUFFER_COUNT);
+	if (!(*stream)->buffer) {
+		ffmpeg_stream_free(*stream);
+		return FALSE;
+	}
+	(*stream)->io_context = avio_alloc_context(
+		(*stream)->buffer,
+		FFMPEG_STREAM_BUFFER_COUNT,
+		0,
+		file,
+		&ffmpeg_stream_io_read,
+		NULL,
+		&ffmpeg_stream_io_seek
+	);
+	if (!(*stream)->io_context) {
+		ffmpeg_stream_free(*stream);
+		return FALSE;
+	}
+	(*stream)->format_context = avformat_alloc_context();
+	if (!(*stream)->format_context) {
+		ffmpeg_stream_free(*stream);
+		return FALSE;
+	}
+	(*stream)->format_context->pb = (*stream)->io_context;
+	(*stream)->format_context->flags |= AVFMT_FLAG_CUSTOM_IO;
+	if (avformat_open_input(&(*stream)->format_context, NULL, NULL, NULL) < 0) {
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
@@ -51,6 +96,7 @@ BOOL ffmpeg_stream_create(const char* url, FFMPEG_STREAM** const stream, const D
 		if ((*stream)->format_context->streams[a]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
 			(*stream)->stream = (*stream)->format_context->streams[a];
 			(*stream)->stream_index = a;
+			break;
 		}
 	}
 	if (!(*stream)->stream) {
@@ -132,7 +178,7 @@ BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG
 	}
 	DWORD count = swr_convert(
 		stream->resample_context,
-		&(BYTE*)destination->buffer,
+		&destination->buffer,
 		source->nb_samples,
 		(BYTE**)source->data,
 		source->nb_samples
@@ -316,6 +362,9 @@ BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {
 	}
 	if (stream->format_context) {
 		avformat_close_input(&stream->format_context);
+	}
+	if (stream->io_context) {
+		avio_context_free(&stream->io_context);
 	}
 	free(stream);
 	return TRUE;

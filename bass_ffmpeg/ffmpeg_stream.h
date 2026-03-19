@@ -2,15 +2,18 @@
 #include <libavformat/avformat.h>
 #include <libswresample/swresample.h>
 
+#define FFMPEG_STREAM_BUFFER_COUNT 10240
 #define FFMPEG_STREAM_FRAME_COUNT 16
 
 typedef struct {
-	void* buffer;
+	BYTE* buffer;
 	DWORD position;
 	DWORD count;
 } FFMPEG_FRAME;
 
 typedef struct {
+	BYTE* buffer;
+	AVIOContext* io_context;
 	AVFormatContext* format_context;
 	AVCodecContext* codec_context;
 	AVStream* stream;
@@ -25,7 +28,7 @@ typedef struct {
 	QWORD length;
 } FFMPEG_STREAM;
 
-BOOL ffmpeg_stream_create(const char* file, FFMPEG_STREAM** const stream, const DWORD flags);
+BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWORD flags);
 
 BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream);
 

@@ -72,19 +72,7 @@ const VOID* WINAPI BASSplugin(DWORD face) {
 HSTREAM WINAPI BASS_FFMPEG_StreamCreate(BASSFILE file, DWORD flags) {
 	HSTREAM handle;
 	FFMPEG_STREAM* stream;
-	BOOL unicode = FALSE;
-	const char* file_name = bassfunc->file.GetFileName(file, &unicode);
-	if (!file_name) {
-		error(BASS_ERROR_NOTFILE);
-	}
-	if (unicode) {
-		const char unicode_filename[MAX_PATH];
-		if (WideCharToMultiByte(CP_ACP, 0, (LPCWSTR)file_name, -1, (LPSTR)unicode_filename, MAX_PATH, NULL, NULL) <= 0) {
-			error(BASS_ERROR_NOTFILE);
-		}
-		file_name = unicode_filename;
-	}
-	if (!ffmpeg_stream_create(file_name, &stream, flags)) {
+	if (!ffmpeg_stream_create(file, &stream, flags)) {
 		error(BASS_ERROR_FILEFORM);
 	}
 	handle = bassfunc->CreateStream(
