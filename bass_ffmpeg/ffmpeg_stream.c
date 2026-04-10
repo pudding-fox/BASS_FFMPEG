@@ -1,6 +1,8 @@
 #include "ffmpeg_stream.h"
 #include <libavutil/samplefmt.h>
 
+#include <string.h>
+
 int64_t bass_channel_layout(const DWORD channels) {
 	switch (channels) {
 	case 1:
@@ -352,6 +354,27 @@ BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {
 	return TRUE;
 }
 
+const char* GENRES[] =
+{
+	"Blues", "Classic Rock", "Country", "Dance", "Disco", "Funk", "Grunge", "Hip-Hop", "Jazz", "Metal",
+	"New Age", "Oldies", "Other", "Pop", "R&B", "Rap", "Reggae", "Rock", "Techno", "Industrial",
+	"Alternative", "Ska", "Death Metal", "Pranks", "Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop", "Vocal", "Jazz+Funk",
+	"Fusion", "Trance", "Classical", "Instrumental", "Acid", "House", "Game", "Sound Clip", "Gospel", "Noise",
+	"Alternative Rock", "Bass", "Soul", "Punk", "Space", "Meditative", "Instrumental Pop", "Instrumental Rock", "Ethnic", "Gothic",
+	"Darkwave", "Techno-Industrial", "Electronic", "Pop-Folk", "Eurodance", "Dream", "Southern Rock", "Comedy", "Cult", "Gangsta",
+	"Top Christian Rap", "Pop/Funk", "Jungle", "Native US", "Cabaret", "New Wave", "Psychadelic", "Rave", "Showtunes", "Trailer",
+	"Lo-Fi", "Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical", "Rock & Roll", "Hard Rock", "Folk",
+	"Folk-Rock", "National Folk", "Swing", "Fast Fusion", "Bebob", "Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde",
+	"Gothic Rock", "Progressive Rock", "Psychedelic Rock", "Symphonic Rock", "Slow Rock", "Big Band", "Chorus", "Easy Listening", "Acoustic", "Humour",
+	"Speech", "Chanson", "Opera", "Chamber Music", "Sonata", "Symphony", "Booty Bass", "Primus", "Porn Groove", "Satire",
+	"Slow Jam", "Club", "Tango", "Samba", "Folklore", "Ballad", "Power Ballad", "Rhythmic Soul", "Freestyle", "Duet",
+	"Punk Rock", "Drum Solo", "Acapella", "Euro-House", "Dance Hall", "Goa", "Drum & Bass", "Club - House", "Hardcore", "Terror",
+	"Indie", "BritPop", "Negerpunk", "Polsk Punk", "Beat", "Christian Gangsta Rap", "Heavy Metal", "Black Metal", "Crossover", "Contemporary Christian",
+	"Christian Rock", "Merengue", "Salsa", "Thrash Metal", "Anime", "JPop", "Synthpop", "Unknown"
+};
+
+#define GENRES_MAX (sizeof (GENRES) / sizeof (const char *))
+
 BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream) {
 	stream->tag = calloc(sizeof(TAG_ID3), 1);
 	if (!stream->tag) {
@@ -363,27 +386,37 @@ BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream) {
 	AVDictionaryEntry* tag = NULL;
 	tag = av_dict_get(stream->format_context->metadata, "title", NULL, 0);
 	if (tag) {
-		strcpy_s(stream->tag->title, sizeof(stream->tag->title), tag->value);
+		strncpy(stream->tag->title, tag->value, sizeof(stream->tag->title));
 	}
 	tag = av_dict_get(stream->format_context->metadata, "artist", NULL, 0);
 	if (tag) {
-		strcpy_s(stream->tag->artist, sizeof(stream->tag->artist), tag->value);
+		strncpy(stream->tag->artist, tag->value, sizeof(stream->tag->artist));
 	}
 	tag = av_dict_get(stream->format_context->metadata, "album", NULL, 0);
 	if (tag) {
-		strcpy_s(stream->tag->album, sizeof(stream->tag->album), tag->value);
+		strncpy(stream->tag->album, tag->value, sizeof(stream->tag->album));
 	}
 	tag = av_dict_get(stream->format_context->metadata, "year", NULL, 0);
 	if (tag) {
-		strcpy_s(stream->tag->year, sizeof(stream->tag->year), tag->value);
+		strncpy(stream->tag->year, tag->value, sizeof(stream->tag->year));
 	}
 	tag = av_dict_get(stream->format_context->metadata, "comment", NULL, 0);
 	if (tag) {
-		strcpy_s(stream->tag->comment, sizeof(stream->tag->comment), tag->value);
+		strncpy(stream->tag->comment, tag->value, sizeof(stream->tag->comment));
 	}
 	tag = av_dict_get(stream->format_context->metadata, "genre", NULL, 0);
 	if (tag) {
-		strcpy_s(stream->tag->genre, sizeof(stream->tag->genre), tag->value);
+		BOOL success = FALSE;
+		for (BYTE a = 0; a < GENRES_MAX; a++) {
+			if (strcmp(tag->value, GENRES[a]) == 0) {
+				stream->tag->genre = a;
+				success = TRUE;
+				break;
+			}
+		}
+		if (!success) {
+			stream->tag->genre = GENRES_MAX;
+		}
 	}
 	return TRUE;
 }

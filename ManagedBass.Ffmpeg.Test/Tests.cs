@@ -326,8 +326,6 @@ namespace ManagedBass.Ffmpeg.Test
         [Test]
         public void Test005()
         {
-            Debugger.Launch();
-
             var sourceChannel = default(int);
             if (this.Plugin)
             {
