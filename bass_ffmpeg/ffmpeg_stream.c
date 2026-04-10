@@ -404,6 +404,19 @@ BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream) {
 	if (tag) {
 		strncpy(stream->tag->comment, tag->value, sizeof(stream->tag->comment));
 	}
+	tag = av_dict_get(stream->format_context->metadata, "track", NULL, 0);
+	if (tag) {
+		DWORD track = atoi(tag->value);
+		if (track < 0) {
+			track = 0;
+		}
+		if (track > 255) {
+			track = 255;
+			track = 255;
+		}
+		memset(stream->tag->comment + sizeof(stream->tag->comment) - 2, 0, 1);
+		memset(stream->tag->comment + sizeof(stream->tag->comment) - 1, track, 1);
+	}
 	tag = av_dict_get(stream->format_context->metadata, "genre", NULL, 0);
 	if (tag) {
 		BOOL success = FALSE;
