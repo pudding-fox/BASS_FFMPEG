@@ -29,7 +29,6 @@ const ADDON_FUNCTIONS addon_functions = {
 	&BASS_FFMPEG_GetLength,
 	&BASS_FFMEG_GetTags,
 	NULL,
-	NULL,
 	&BASS_FFMPEG_GetInfo,
 	&BASS_FFMPEG_CanSetPosition,
 	&BASS_FFMPEG_SetPosition,
@@ -172,7 +171,7 @@ const char* WINAPI BASS_FFMEG_GetTags(void* inst, DWORD tags) {
 		TAG_ID3* tag = stream->tag;
 		return (const char*)tag;
 	}
-	errorn(BASS_ERROR_NOTAVAIL);
+	return NULL;
 }
 
 VOID WINAPI BASS_FFMPEG_Free(void* inst) {
