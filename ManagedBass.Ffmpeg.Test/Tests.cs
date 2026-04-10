@@ -322,5 +322,27 @@ namespace ManagedBass.Ffmpeg.Test
                 }
             }
         }
+
+        [Test]
+        public void Test005()
+        {
+            Debugger.Launch();
+
+            var sourceChannel = default(int);
+            if (this.Plugin)
+            {
+                sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags | BassFlags.Decode);
+            }
+            else
+            {
+                sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags | BassFlags.Decode);
+            }
+            if (sourceChannel == 0)
+            {
+                Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            var tags = BassFfmpeg.ChannelGetTags(sourceChannel);
+        }
     }
 }

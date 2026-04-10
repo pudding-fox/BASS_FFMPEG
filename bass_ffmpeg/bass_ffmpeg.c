@@ -20,6 +20,7 @@ VOID WINAPI BASS_FFMPEG_GetInfo(void* inst, BASS_CHANNELINFO* info);
 QWORD WINAPI BASS_FFMPEG_GetPosition(void* inst, QWORD position, DWORD mode);
 BOOL WINAPI BASS_FFMPEG_CanSetPosition(void* inst, QWORD position, DWORD mode);
 QWORD WINAPI BASS_FFMPEG_SetPosition(void* inst, QWORD position, DWORD mode);
+const char* WINAPI BASS_FFMEG_GetTags(void* inst, DWORD tags);
 
 VOID WINAPI BASS_FFMPEG_Free(void* inst);
 
@@ -27,6 +28,7 @@ const ADDON_FUNCTIONS addon_functions = {
 	0,
 	&BASS_FFMPEG_Free,
 	&BASS_FFMPEG_GetLength,
+	&BASS_FFMEG_GetTags,
 	NULL,
 	NULL,
 	&BASS_FFMPEG_GetInfo,
@@ -172,6 +174,15 @@ QWORD WINAPI BASS_FFMPEG_SetPosition(void* inst, QWORD position, DWORD mode) {
 				return position;
 			}
 		}
+	}
+	errorn(BASS_ERROR_NOTAVAIL);
+}
+
+const char* WINAPI BASS_FFMEG_GetTags(void* inst, DWORD tags) {
+	FFMPEG_STREAM* stream = inst;
+	if (tags == BASS_TAG_ID3) {
+		TAG_ID3* tag = stream->tag;
+		return (const char*)tag;
 	}
 	errorn(BASS_ERROR_NOTAVAIL);
 }

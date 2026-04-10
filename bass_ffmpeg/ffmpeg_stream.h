@@ -26,6 +26,7 @@ typedef struct {
 	DWORD flags;
 	QWORD position;
 	QWORD length;
+	TAG_ID3* tag;
 } FFMPEG_STREAM;
 
 BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWORD flags);
@@ -41,5 +42,7 @@ BOOL ffmpeg_stream_can_seek(FFMPEG_STREAM* const stream, QWORD position);
 BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position);
 
 BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream);
+
+BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream);
 
 BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream);

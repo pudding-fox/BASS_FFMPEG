@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace ManagedBass.Ffmpeg
@@ -48,6 +49,16 @@ namespace ManagedBass.Ffmpeg
         public static int CreateStream(string File, long Offset = 0, long Length = 0, BassFlags Flags = BassFlags.Default)
         {
             return BASS_FFMPEG_StreamCreateFile(false, File, Offset, Length, Flags);
+        }
+
+        public static ID3v1Tag ChannelGetTags(int Handle)
+        {
+            var ptr = Bass.ChannelGetTags(Handle, TagType.ID3);
+            if (ptr == IntPtr.Zero)
+            {
+                return default(ID3v1Tag);
+            }
+            return Marshal.PtrToStructure(ptr, typeof(ID3v1Tag)) as ID3v1Tag;
         }
     }
 }

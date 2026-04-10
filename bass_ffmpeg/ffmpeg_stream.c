@@ -147,6 +147,10 @@ BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWO
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
+	if (!ffmpeg_stream_tag(*stream)) {
+		ffmpeg_stream_free(*stream);
+		return FALSE;
+	}
 	return TRUE;
 }
 
@@ -345,6 +349,42 @@ BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {
 	stream->frame_count = 0;
 	stream->frame_position = 0;
 	avcodec_flush_buffers(stream->codec_context);
+	return TRUE;
+}
+
+BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream) {
+	stream->tag = calloc(sizeof(TAG_ID3), 1);
+	if (!stream->tag) {
+		return FALSE;
+	}
+	stream->tag->id[0] = 'T';
+	stream->tag->id[1] = 'A';
+	stream->tag->id[2] = 'G';
+	AVDictionaryEntry* tag = NULL;
+	tag = av_dict_get(stream->format_context->metadata, "title", NULL, 0);
+	if (tag) {
+		strcpy_s(stream->tag->title, sizeof(stream->tag->title), tag->value);
+	}
+	tag = av_dict_get(stream->format_context->metadata, "artist", NULL, 0);
+	if (tag) {
+		strcpy_s(stream->tag->artist, sizeof(stream->tag->artist), tag->value);
+	}
+	tag = av_dict_get(stream->format_context->metadata, "album", NULL, 0);
+	if (tag) {
+		strcpy_s(stream->tag->album, sizeof(stream->tag->album), tag->value);
+	}
+	tag = av_dict_get(stream->format_context->metadata, "year", NULL, 0);
+	if (tag) {
+		strcpy_s(stream->tag->year, sizeof(stream->tag->year), tag->value);
+	}
+	tag = av_dict_get(stream->format_context->metadata, "comment", NULL, 0);
+	if (tag) {
+		strcpy_s(stream->tag->comment, sizeof(stream->tag->comment), tag->value);
+	}
+	tag = av_dict_get(stream->format_context->metadata, "genre", NULL, 0);
+	if (tag) {
+		strcpy_s(stream->tag->genre, sizeof(stream->tag->genre), tag->value);
+	}
 	return TRUE;
 }
 
