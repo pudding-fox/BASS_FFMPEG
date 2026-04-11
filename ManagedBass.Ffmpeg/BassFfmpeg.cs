@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace ManagedBass.Ffmpeg
@@ -51,6 +52,24 @@ namespace ManagedBass.Ffmpeg
             return BASS_FFMPEG_StreamCreateFile(false, File, Offset, Length, Flags);
         }
 
+        [DllImport(DllName)]
+        static extern int BASS_FFMPEG_GetTracks(int Handle, [Out][MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] FFMPEG_TRACK[] Tracks, int count);
+
+        public static FFMPEG_TRACK[] GetTracks(int Handle)
+        {
+            var tracks = new FFMPEG_TRACK[16];
+            var count = BASS_FFMPEG_GetTracks(Handle, tracks, tracks.Length);
+            return tracks.Take(count).ToArray();
+        }
+
+        [DllImport(DllName)]
+        static extern bool BASS_FFMPEG_SetTrack(int Handle, int Index);
+
+        public static bool SetTrack(int Handle, int Index)
+        {
+            return BASS_FFMPEG_SetTrack(Handle, Index);
+        }
+
         public static ID3v1Tag ChannelGetTags(int Handle)
         {
             var ptr = Bass.ChannelGetTags(Handle, TagType.ID3);
@@ -59,6 +78,16 @@ namespace ManagedBass.Ffmpeg
                 return default(ID3v1Tag);
             }
             return Marshal.PtrToStructure(ptr, typeof(ID3v1Tag)) as ID3v1Tag;
+        }
+
+        const int FFMPEG_TRACK_TITLE_LENGTH = 30;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FFMPEG_TRACK
+        {
+            public int Index;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = FFMPEG_TRACK_TITLE_LENGTH)]
+            public string Title;
         }
     }
 }

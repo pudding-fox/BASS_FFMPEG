@@ -3,3 +3,5 @@ VERSION 2.4
 EXPORTS
 BASSplugin
 BASS_FFMPEG_StreamCreateFile
+BASS_FFMPEG_GetTracks
+BASS_FFMPEG_SetTrack

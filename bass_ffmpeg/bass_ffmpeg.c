@@ -1,5 +1,4 @@
 #include "bass_ffmpeg.h"
-#include "ffmpeg_stream.h"
 
 const BASS_FUNCTIONS* bassfunc;
 
@@ -177,4 +176,20 @@ const char* WINAPI BASS_FFMEG_GetTags(void* inst, DWORD tags) {
 VOID WINAPI BASS_FFMPEG_Free(void* inst) {
 	FFMPEG_STREAM* stream = inst;
 	ffmpeg_stream_free(stream);
+}
+
+DWORD WINAPI BASS_FFMPEG_GetTracks(HSTREAM handle, FFMPEG_TRACK* tracks, DWORD count) {
+	FFMPEG_STREAM* stream = bassfunc->GetInst(handle, &addon_functions);
+	if (!stream) {
+		return 0;
+	}
+	return ffmpeg_stream_get_tracks(stream, tracks, count);
+}
+
+BOOL WINAPI BASS_FFMPEG_SetTrack(HSTREAM handle, DWORD index) {
+	FFMPEG_STREAM* stream = bassfunc->GetInst(handle, &addon_functions);
+	if (!stream) {
+		return FALSE;
+	}
+	return ffmpeg_stream_set_track(stream, index);
 }

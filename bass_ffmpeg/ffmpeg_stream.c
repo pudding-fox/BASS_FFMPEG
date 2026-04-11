@@ -66,6 +66,7 @@ BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWO
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
+	(*stream)->flags = flags;
 	(*stream)->io_context = avio_alloc_context(
 		(*stream)->buffer,
 		FFMPEG_STREAM_BUFFER_COUNT,
@@ -94,58 +95,7 @@ BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWO
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
-	for (DWORD a = 0; a < (*stream)->format_context->nb_streams; a++) {
-		if ((*stream)->format_context->streams[a]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
-			(*stream)->stream = (*stream)->format_context->streams[a];
-			(*stream)->stream_index = a;
-			break;
-		}
-	}
-	if (!(*stream)->stream) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	(*stream)->codec = avcodec_find_decoder((*stream)->stream->codecpar->codec_id);
-	if (!(*stream)->codec) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	(*stream)->codec_context = avcodec_alloc_context3(NULL);
-	if (avcodec_parameters_to_context((*stream)->codec_context, (*stream)->stream->codecpar) < 0) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	if (avcodec_open2((*stream)->codec_context, (*stream)->codec, NULL) < 0) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	(*stream)->resample_context = swr_alloc();
-	if (!(*stream)->resample_context) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	(*stream)->resample_context = swr_alloc_set_opts(
-		(*stream)->resample_context,
-		bass_channel_layout((*stream)->codec_context->channels),
-		bass_sample_format(flags),
-		(*stream)->codec_context->sample_rate,
-		av_get_default_channel_layout((*stream)->codec_context->channels),
-		(*stream)->codec_context->sample_fmt,
-		(*stream)->codec_context->sample_rate,
-		0,
-		NULL
-	);
-	if (!(*stream)->resample_context) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	if (swr_init((*stream)->resample_context) < 0) {
-		ffmpeg_stream_free(*stream);
-		return FALSE;
-	}
-	(*stream)->flags = flags;
-	(*stream)->length = ffmpeg_stream_length(*stream);
-	if (!ffmpeg_stream_update(*stream)) {
+	if (!ffmpeg_stream_set_track(*stream, 0)) {
 		ffmpeg_stream_free(*stream);
 		return FALSE;
 	}
@@ -350,7 +300,9 @@ BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
 BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {
 	stream->frame_count = 0;
 	stream->frame_position = 0;
-	avcodec_flush_buffers(stream->codec_context);
+	if (stream->codec_context) {
+		avcodec_flush_buffers(stream->codec_context);
+	}
 	return TRUE;
 }
 
@@ -430,6 +382,85 @@ BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream) {
 		if (!success) {
 			stream->tag->genre = GENRES_MAX;
 		}
+	}
+	return TRUE;
+}
+
+DWORD ffmpeg_stream_get_tracks(FFMPEG_STREAM* const stream, FFMPEG_TRACK* tracks, DWORD count) {
+	DWORD position = 0;
+	for (DWORD a = 0; a < stream->format_context->nb_streams && position < count; a++) {
+		if (stream->format_context->streams[a]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+			AVDictionaryEntry* tag = av_dict_get(stream->format_context->streams[a]->metadata, "title", NULL, 0);
+			tracks[position].index = position;
+			if (tag) {
+				strncpy(tracks[position].title, tag->value, sizeof(tracks[position].title));
+			}
+			position++;
+		}
+	}
+	return position;
+}
+
+BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index) {
+	if (stream->codec_context) {
+		avcodec_free_context(&stream->codec_context);
+	}
+	stream->stream = NULL;
+	DWORD position = 0;
+	for (DWORD a = 0; a < stream->format_context->nb_streams; a++) {
+		if (stream->format_context->streams[a]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+			if (position == index) {
+				stream->stream = stream->format_context->streams[a];
+				stream->stream_index = a;
+				break;
+			}
+			position++;
+		}
+	}
+	if (!stream->stream) {
+		return FALSE;
+	}
+	if (!ffmpeg_stream_reset(stream)) {
+		return FALSE;
+	}
+	stream->codec = avcodec_find_decoder(stream->stream->codecpar->codec_id);
+	if (!stream->codec) {
+		return FALSE;
+	}
+	stream->codec_context = avcodec_alloc_context3(NULL);
+	if (avcodec_parameters_to_context(stream->codec_context, stream->stream->codecpar) < 0) {
+		return FALSE;
+	}
+	if (avcodec_open2(stream->codec_context, stream->codec, NULL) < 0) {
+		return FALSE;
+	}
+	if (stream->resample_context) {
+		swr_free(&stream->resample_context);
+	}
+	stream->resample_context = swr_alloc();
+	if (!stream->resample_context) {
+		return FALSE;
+	}
+	stream->resample_context = swr_alloc_set_opts(
+		stream->resample_context,
+		bass_channel_layout(stream->codec_context->channels),
+		bass_sample_format(stream->flags),
+		stream->codec_context->sample_rate,
+		av_get_default_channel_layout(stream->codec_context->channels),
+		stream->codec_context->sample_fmt,
+		stream->codec_context->sample_rate,
+		0,
+		NULL
+	);
+	if (!stream->resample_context) {
+		return FALSE;
+	}
+	if (swr_init(stream->resample_context) < 0) {
+		return FALSE;
+	}
+	stream->length = ffmpeg_stream_length(stream);
+	if (!ffmpeg_stream_update(stream)) {
+		return FALSE;
 	}
 	return TRUE;
 }
