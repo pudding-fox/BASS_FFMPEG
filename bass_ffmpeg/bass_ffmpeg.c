@@ -128,6 +128,9 @@ QWORD WINAPI BASS_FFMPEG_GetLength(void* inst, DWORD mode) {
 	if (mode == BASS_POS_BYTE) {
 		noerrorn(stream->length);
 	}
+	else if (mode == BASS_POS_TRACK) {
+		noerrorn(ffmpeg_stream_get_tracks(stream, NULL, (DWORD)-1));
+	}
 	else {
 		errorn(BASS_ERROR_NOTAVAIL);
 	}
@@ -144,6 +147,9 @@ BOOL WINAPI BASS_FFMPEG_CanSetPosition(void* inst, QWORD position, DWORD mode) {
 	if ((BYTE)mode == BASS_POS_BYTE) {
 		return ffmpeg_stream_can_seek(stream, position);
 	}
+	else if ((BYTE)mode = BASS_POS_TRACK) {
+		return ffmpeg_stream_get_tracks(stream, NULL, (DWORD)-1) >= position;
+	}
 	else {
 		error(BASS_ERROR_NOTAVAIL);
 	}
@@ -153,6 +159,16 @@ QWORD WINAPI BASS_FFMPEG_SetPosition(void* inst, QWORD position, DWORD mode) {
 	FFMPEG_STREAM* stream = inst;
 	if ((BYTE)mode == BASS_POS_BYTE) {
 		if (ffmpeg_stream_seek(stream, position)) {
+			if (stream->position) {
+				return stream->position;
+			}
+			else {
+				return position;
+			}
+		}
+	}
+	else if ((BYTE)mode == BASS_POS_TRACK) {
+		if (ffmpeg_stream_set_track(stream, (DWORD)position)) {
 			if (stream->position) {
 				return stream->position;
 			}

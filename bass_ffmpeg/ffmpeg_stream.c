@@ -390,10 +390,12 @@ DWORD ffmpeg_stream_get_tracks(FFMPEG_STREAM* const stream, FFMPEG_TRACK* tracks
 	DWORD position = 0;
 	for (DWORD a = 0; a < stream->format_context->nb_streams && position < count; a++) {
 		if (stream->format_context->streams[a]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
-			AVDictionaryEntry* tag = av_dict_get(stream->format_context->streams[a]->metadata, "title", NULL, 0);
-			tracks[position].index = position;
-			if (tag) {
-				strncpy(tracks[position].title, tag->value, sizeof(tracks[position].title));
+			if (tracks) {
+				AVDictionaryEntry* tag = av_dict_get(stream->format_context->streams[a]->metadata, "title", NULL, 0);
+				tracks[position].index = position;
+				if (tag) {
+					strncpy(tracks[position].title, tag->value, sizeof(tracks[position].title));
+				}
 			}
 			position++;
 		}
