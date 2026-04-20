@@ -22,17 +22,17 @@
   </ItemDefinitionGroup>
   <ItemGroup Condition="'$(Platform)'=='Win32'">
     <Library Include="..\lib\x86\bass.lib" />
-    <Library Include="..\lib\x86\libavformat.lib" />
-    <Library Include="..\lib\x86\libavutil.lib" />
-    <Library Include="..\lib\x86\libavcodec.lib" />
-    <Library Include="..\lib\x86\libswresample.lib" />
+    <Library Include="..\lib\x86\avcodec.lib" />
+    <Library Include="..\lib\x86\avformat.lib" />
+    <Library Include="..\lib\x86\avutil.lib" />
+    <Library Include="..\lib\x86\swresample.lib" />
   </ItemGroup>
   <ItemGroup Condition="'$(Platform)'=='x64'">
     <Library Include="..\lib\x64\bass.lib" />
-    <Library Include="..\lib\x64\libavformat.lib" />
-    <Library Include="..\lib\x64\libavutil.lib" />
-    <Library Include="..\lib\x64\libavcodec.lib" />
-    <Library Include="..\lib\x64\libswresample.lib" />
+    <Library Include="..\lib\x64\avcodec.lib" />
+    <Library Include="..\lib\x64\avformat.lib" />
+    <Library Include="..\lib\x64\avutil.lib" />
+    <Library Include="..\lib\x64\swresample.lib" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bass_ffmpeg.h" />

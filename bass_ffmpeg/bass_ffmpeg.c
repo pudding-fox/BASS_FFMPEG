@@ -75,7 +75,7 @@ HSTREAM WINAPI BASS_FFMPEG_StreamCreate(BASSFILE file, DWORD flags) {
 	}
 	handle = bassfunc->CreateStream(
 		stream->stream->codecpar->sample_rate,
-		stream->stream->codecpar->channels,
+		stream->stream->codecpar->ch_layout.nb_channels,
 		flags,
 		&BASS_FFMPEG_StreamProc,
 		stream,

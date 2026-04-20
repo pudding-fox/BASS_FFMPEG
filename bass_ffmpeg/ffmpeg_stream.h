@@ -1,4 +1,5 @@
 #include <bass-addon.h>
+#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswresample/swresample.h>
 
@@ -24,7 +25,7 @@ typedef struct {
 	AVCodecContext* codec_context;
 	AVStream* stream;
 	DWORD stream_index;
-	AVCodec* codec;
+	const AVCodec* codec;
 	FFMPEG_FRAME frames[FFMPEG_STREAM_FRAME_COUNT];
 	DWORD frame_position;
 	DWORD frame_count;

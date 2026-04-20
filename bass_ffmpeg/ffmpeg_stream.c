@@ -1,21 +1,28 @@
 #include "ffmpeg_stream.h"
+#include <libavutil/opt.h>
 #include <libavutil/samplefmt.h>
 
 #include <string.h>
 
-int64_t bass_channel_layout(const DWORD channels) {
+AVChannelLayout bass_channel_layout(const DWORD channels) {
+	AVChannelLayout layout;
 	switch (channels) {
 	case 1:
-		return AV_CH_LAYOUT_MONO;
+		av_channel_layout_from_mask(&layout, AV_CH_LAYOUT_MONO);
+		break;
 	case 2:
-		return AV_CH_LAYOUT_STEREO;
+		av_channel_layout_from_mask(&layout, AV_CH_LAYOUT_STEREO);
+		break;
 	case 3:
 	case 5:
 	case 6:
-		return AV_CH_LAYOUT_5POINT1;
+		av_channel_layout_from_mask(&layout, AV_CH_LAYOUT_5POINT1);
+		break;
 	default:
-		return AV_CH_LAYOUT_7POINT1;
+		av_channel_layout_from_mask(&layout, AV_CH_LAYOUT_7POINT1);
+		break;
 	}
+	return layout;
 }
 
 enum AVSampleFormat bass_sample_format(const DWORD flags) {
@@ -107,7 +114,7 @@ BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWO
 }
 
 BOOL ffmpeg_buffer_alloc(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG_FRAME* destination) {
-	DWORD samples_per_frame = source->nb_samples * source->channels;
+	DWORD samples_per_frame = source->nb_samples * source->ch_layout.nb_channels;
 	DWORD bytes_per_frame = samples_per_frame * bass_bytes_per_sample(stream->flags);
 	DWORD buffer_size = bytes_per_frame * 2; //TODO: No idea why we need to multiply by 2, but swr_convert encounters a buffer overflow otherwise.
 	if (!destination->buffer) {
@@ -144,16 +151,15 @@ BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG
 }
 
 QWORD ffmpeg_stream_position(FFMPEG_STREAM* const stream, AVFrame* frame) {
-	QWORD timestamp = av_frame_get_best_effort_timestamp(frame);
-	if (timestamp == AV_NOPTS_VALUE) {
+	if (frame->best_effort_timestamp == AV_NOPTS_VALUE) {
 		return 0;
 	}
 	else {
 		DWORD bytes_per_sample = bass_bytes_per_sample(stream->flags);
-		DOUBLE position = timestamp *
+		DOUBLE position = frame->best_effort_timestamp *
 			av_q2d(stream->stream->time_base) *
 			stream->codec_context->sample_rate *
-			stream->codec_context->channels *
+			stream->codec_context->ch_layout.nb_channels *
 			bytes_per_sample;
 		return (QWORD)position;
 	}
@@ -259,7 +265,7 @@ QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
 		QWORD length =
 			(stream->format_context->duration / AV_TIME_BASE) *
 			stream->codec_context->sample_rate *
-			stream->codec_context->channels *
+			stream->codec_context->ch_layout.nb_channels *
 			bytes_per_sample;
 		return length;
 	}
@@ -268,7 +274,7 @@ QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
 			stream->stream->duration *
 			av_q2d(stream->stream->time_base) *
 			stream->codec_context->sample_rate *
-			stream->codec_context->channels *
+			stream->codec_context->ch_layout.nb_channels *
 			bytes_per_sample;
 		return (QWORD)length;
 	}
@@ -389,7 +395,7 @@ BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream) {
 DWORD ffmpeg_stream_get_tracks(FFMPEG_STREAM* const stream, FFMPEG_TRACK* tracks, DWORD count) {
 	DWORD position = 0;
 	for (DWORD a = 0; a < stream->format_context->nb_streams && position < count; a++) {
-		if (stream->format_context->streams[a]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+		if (stream->format_context->streams[a]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (tracks) {
 				AVDictionaryEntry* tag = av_dict_get(stream->format_context->streams[a]->metadata, "title", NULL, 0);
 				tracks[position].index = position;
@@ -410,7 +416,7 @@ BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index) {
 	stream->stream = NULL;
 	DWORD position = 0;
 	for (DWORD a = 0; a < stream->format_context->nb_streams; a++) {
-		if (stream->format_context->streams[a]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+		if (stream->format_context->streams[a]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (position == index) {
 				stream->stream = stream->format_context->streams[a];
 				stream->stream_index = a;
@@ -443,20 +449,16 @@ BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index) {
 	if (!stream->resample_context) {
 		return FALSE;
 	}
-	stream->resample_context = swr_alloc_set_opts(
-		stream->resample_context,
-		bass_channel_layout(stream->codec_context->channels),
-		bass_sample_format(stream->flags),
-		stream->codec_context->sample_rate,
-		av_get_default_channel_layout(stream->codec_context->channels),
-		stream->codec_context->sample_fmt,
-		stream->codec_context->sample_rate,
-		0,
-		NULL
-	);
-	if (!stream->resample_context) {
-		return FALSE;
-	}
+	AVChannelLayout in_channel_layout = bass_channel_layout(stream->codec_context->ch_layout.nb_channels);
+	AVChannelLayout out_channel_layout = stream->codec_context->ch_layout;
+	enum AVSampleFormat in_format = stream->codec_context->sample_fmt;
+	enum AVSampleFormat out_format = bass_sample_format(stream->flags);
+	av_opt_set_chlayout(stream->resample_context, "in_chlayout", &in_channel_layout, 0);
+	av_opt_set_chlayout(stream->resample_context, "out_chlayout", &out_channel_layout, 0);
+	av_opt_set_int(stream->resample_context, "in_sample_rate", stream->codec_context->sample_rate, 0);
+	av_opt_set_int(stream->resample_context, "out_sample_rate", stream->codec_context->sample_rate, 0);
+	av_opt_set_sample_fmt(stream->resample_context, "in_sample_fmt", in_format, 0);
+	av_opt_set_sample_fmt(stream->resample_context, "out_sample_fmt", out_format, 0);
 	if (swr_init(stream->resample_context) < 0) {
 		return FALSE;
 	}

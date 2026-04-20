@@ -15,18 +15,24 @@ namespace ManagedBass.Ffmpeg
 
         public static bool Load(string folderName = null)
         {
-            if (Module == 0)
+            if (Module != 0)
             {
-                var fileName = default(string);
-                if (!string.IsNullOrEmpty(folderName))
-                {
-                    fileName = Path.Combine(folderName, DllName);
-                }
-                else
-                {
-                    fileName = Path.Combine(Loader.FolderName, DllName);
-                }
-                Module = Bass.PluginLoad(string.Format("{0}.{1}", fileName, Loader.Extension));
+                return true;
+            }
+            if (string.IsNullOrEmpty(folderName))
+            {
+                folderName = Loader.FolderName;
+            }
+            SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | LOAD_LIBRARY_SEARCH_USER_DIRS);
+            var cookie = AddDllDirectory(folderName);
+            try
+            {
+                var fileName = string.Concat(Path.Combine(folderName, DllName), ".", Loader.Extension);
+                Module = Bass.PluginLoad(fileName);
+            }
+            finally
+            {
+                RemoveDllDirectory(cookie);
             }
             return Module != 0;
         }
@@ -89,5 +95,18 @@ namespace ManagedBass.Ffmpeg
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = FFMPEG_TRACK_TITLE_LENGTH)]
             public string Title;
         }
+
+        public const uint LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000;
+
+        public const uint LOAD_LIBRARY_SEARCH_USER_DIRS = 0x00000400;
+
+        [DllImport("kernel32.dll")]
+        public static extern bool SetDefaultDllDirectories(uint DirectoryFlags);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        public static extern IntPtr AddDllDirectory(string lpPathName);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool RemoveDllDirectory(IntPtr Cookie);
     }
 }
