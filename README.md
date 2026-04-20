@@ -49,7 +49,3 @@ if (!Bass.StreamFree(sourceChannel))
     Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
 }
 ```
-The binaries require "Microsoft Visual C++ 2015 - 2022 Redistributable" available here:
-
-- x86: [vc_redist.x86.exe](https://aka.ms/vs/17/release/vc_redist.x86.exe)
-- x64: [vc_redist.x64.exe](https://aka.ms/vs/17/release/vc_redist.x64.exe)
