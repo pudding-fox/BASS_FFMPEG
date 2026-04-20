@@ -76,16 +76,6 @@ namespace ManagedBass.Ffmpeg
             return BASS_FFMPEG_SetTrack(Handle, Index);
         }
 
-        public static ID3v1Tag ChannelGetTags(int Handle)
-        {
-            var ptr = Bass.ChannelGetTags(Handle, TagType.ID3);
-            if (ptr == IntPtr.Zero)
-            {
-                return default(ID3v1Tag);
-            }
-            return Marshal.PtrToStructure(ptr, typeof(ID3v1Tag)) as ID3v1Tag;
-        }
-
         const int FFMPEG_TRACK_TITLE_LENGTH = 30;
 
         [StructLayout(LayoutKind.Sequential)]

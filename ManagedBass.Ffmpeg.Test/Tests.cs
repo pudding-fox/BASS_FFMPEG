@@ -340,7 +340,7 @@ namespace ManagedBass.Ffmpeg.Test
                 Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
 
-            var tags = BassFfmpeg.ChannelGetTags(sourceChannel);
+            var tags = ID3v1Tag.Read(sourceChannel);
 
             if (!Bass.StreamFree(sourceChannel))
             {
