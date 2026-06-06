@@ -139,6 +139,7 @@ BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG
 	if (!ffmpeg_buffer_alloc(stream, source, destination)) {
 		return FALSE;
 	}
+
 	DWORD count = swr_convert(
 		stream->resample_context,
 		&destination->buffer,
@@ -146,9 +147,17 @@ BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG
 		(BYTE**)source->data,
 		source->nb_samples
 	);
+
+	destination->count =
+		count *
+		stream->codec_context->ch_layout.nb_channels *
+		bass_bytes_per_sample(stream->flags);
+
 	destination->position = 0;
+
 	return TRUE;
 }
+
 
 QWORD ffmpeg_stream_position(FFMPEG_STREAM* const stream, AVFrame* frame) {
 	if (frame->best_effort_timestamp == AV_NOPTS_VALUE) {
