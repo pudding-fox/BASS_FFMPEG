@@ -188,41 +188,73 @@ BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 	BOOL success = TRUE;
 	AVPacket* packet = av_packet_alloc();
 	AVFrame* frame = av_frame_alloc();
-	goto begin;
-retry:
-	av_packet_unref(packet);
-begin:
-	if (av_read_frame(stream->format_context, packet) < 0) {
+	if (!packet || !frame) {
 		success = FALSE;
 		goto done;
 	}
-	if (packet->stream_index != stream->stream_index) {
-		goto retry;
-	}
-	result = avcodec_send_packet(stream->codec_context, packet);
-	if (result < 0) {
-		if (result == AVERROR(EAGAIN)) {
-			goto retry;
-		}
-		else {
-			success = FALSE;
-			goto done;
-		}
-	}
 	stream->frame_position = 0;
 	stream->frame_count = 0;
-	do {
-		result = avcodec_receive_frame(stream->codec_context, frame);
+	while (stream->frame_count < FFMPEG_STREAM_FRAME_COUNT) {
+		result = av_read_frame(stream->format_context, packet);
 		if (result < 0) {
-			break;
+			if (result == AVERROR_EOF) {
+				goto done;
+			}
+			else {
+				success = FALSE;
+				goto done;
+			}
 		}
-		if (!ffmpeg_stream_resample(stream, frame, &stream->frames[stream->frame_count])) {
-			success = FALSE;
-			goto done;
+		if (packet->stream_index != stream->stream_index) {
+			av_packet_unref(packet);
+			continue;
 		}
-		stream->position = ffmpeg_stream_position(stream, frame);
-		stream->frame_count++;
-	} while (stream->frame_count < FFMPEG_STREAM_FRAME_COUNT);
+		result = avcodec_send_packet(stream->codec_context, packet);
+		av_packet_unref(packet);
+		if (result < 0) {
+			if (result == AVERROR(EAGAIN)) {
+				//Nothing to do.
+			}
+			else if (result == AVERROR_EOF) {
+				goto done;
+			}
+			else if (result == AVERROR_INVALIDDATA) {
+				//Nothing to do.
+			}
+			else {
+				success = FALSE;
+				goto done;
+			}
+		}
+		for (;;) {
+			result = avcodec_receive_frame(
+				stream->codec_context,
+				frame
+			);
+			if (result < 0) {
+				if (result == AVERROR(EAGAIN)) {
+					break;
+				}
+				else if (result == AVERROR_EOF) {
+					goto done;
+				}
+				else {
+					success = FALSE;
+					goto done;
+				}
+			}
+			if (!ffmpeg_stream_resample(stream, frame, &stream->frames[stream->frame_count])) {
+				success = FALSE;
+				goto done;
+			}
+			stream->position = ffmpeg_stream_position(stream, frame);
+			stream->frame_count++;
+			av_frame_unref(frame);
+			if (stream->frame_count >= FFMPEG_STREAM_FRAME_COUNT) {
+				goto done;
+			}
+		}
+	}
 done:
 	av_frame_free(&frame);
 	av_packet_free(&packet);
@@ -264,38 +296,53 @@ DWORD ffmpeg_stream_read(FFMPEG_STREAM* const stream, void* buffer, const DWORD 
 	return length - remaining;
 }
 
+DWORD ffmpeg_parse_duration(const char* value) {
+	DWORD hours = 0;
+	DWORD minutes = 0;
+	DOUBLE seconds = 0;
+	hours = strtoul(value, (char**)&value, 10);
+	if (*value != ':') {
+		return 0;
+	}
+	value++;
+	minutes = strtoul(value, (char**)&value, 10);
+	if (*value != ':') {
+		return 0;
+	}
+	value++;
+	seconds = strtod(value, NULL);
+	DOUBLE total = (hours * 3600.0) + (minutes * 60.0) + seconds;
+	return total;
+}
+
 QWORD ffmpeg_stream_length_seconds(FFMPEG_STREAM* const stream) {
-	if (stream->stream->duration == AV_NOPTS_VALUE) {
-		QWORD length =
-			(stream->format_context->duration / AV_TIME_BASE);
-		return length;
+	if (stream->stream->duration != AV_NOPTS_VALUE) {
+		return (QWORD)(stream->stream->duration * av_q2d(stream->stream->time_base));
 	}
 	else {
-		DOUBLE length =
-			stream->stream->duration * av_q2d(stream->stream->time_base);
-		return (QWORD)length;
+		AVDictionaryEntry* tag = av_dict_get(stream->stream->metadata, "DURATION", NULL, 0);
+		if (tag) {
+			DWORD seconds = ffmpeg_parse_duration(tag->value);
+			if (seconds > 0) {
+				return seconds;
+			}
+		}
+		else if (stream->format_context->duration != AV_NOPTS_VALUE)
+		{
+			return (QWORD)((double)stream->format_context->duration / AV_TIME_BASE);
+		}
 	}
+	//Help.
+	return 0;
 }
 
 QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
-	DWORD bytes_per_sample = bass_bytes_per_sample(stream->flags);
-	if (stream->stream->duration == AV_NOPTS_VALUE) {
-		QWORD length =
-			(stream->format_context->duration / AV_TIME_BASE) *
-			stream->codec_context->sample_rate *
-			stream->codec_context->ch_layout.nb_channels *
-			bytes_per_sample;
-		return length;
-	}
-	else {
-		DOUBLE length =
-			stream->stream->duration *
-			av_q2d(stream->stream->time_base) *
-			stream->codec_context->sample_rate *
-			stream->codec_context->ch_layout.nb_channels *
-			bytes_per_sample;
-		return (QWORD)length;
-	}
+	QWORD seconds = ffmpeg_stream_length_seconds(stream);
+	QWORD length = seconds *
+		stream->codec_context->sample_rate *
+		stream->codec_context->ch_layout.nb_channels *
+		bass_bytes_per_sample(stream->flags);
+	return length;
 }
 
 BOOL ffmpeg_stream_can_seek(FFMPEG_STREAM* const stream, QWORD position) {
