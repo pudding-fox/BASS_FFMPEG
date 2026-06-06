@@ -46,6 +46,10 @@ DWORD bass_bytes_per_sample(const DWORD flags) {
 INT ffmpeg_stream_io_read(void* opaque, BYTE* buffer, INT length) {
 	BASSFILE file = (BASSFILE)opaque;
 	INT result = bassfunc->file.Read(file, buffer, length);
+	if (result == 0)
+	{
+		return AVERROR_EOF;
+	}
 	return result;
 }
 
