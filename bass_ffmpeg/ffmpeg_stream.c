@@ -194,6 +194,10 @@ BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 	}
 	stream->frame_position = 0;
 	stream->frame_count = 0;
+	if (stream->position >= stream->length) {
+		success = FALSE;
+		goto done;
+	}
 	while (stream->frame_count < FFMPEG_STREAM_FRAME_COUNT) {
 		result = av_read_frame(stream->format_context, packet);
 		if (result < 0) {
@@ -216,6 +220,7 @@ BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 				//Nothing to do.
 			}
 			else if (result == AVERROR_EOF) {
+				success = FALSE;
 				goto done;
 			}
 			else if (result == AVERROR_INVALIDDATA) {

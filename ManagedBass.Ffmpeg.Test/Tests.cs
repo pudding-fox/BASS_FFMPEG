@@ -181,6 +181,8 @@ namespace ManagedBass.Ffmpeg.Test
                 Assert.AreEqual(Math.Floor(this.Length.TotalSeconds), Math.Floor(channelPositionSeconds));
             }
 
+            Assert.AreEqual(PlaybackState.Stopped, Bass.ChannelIsActive(sourceChannel));
+
             if (!Bass.StreamFree(sourceChannel))
             {
                 Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
