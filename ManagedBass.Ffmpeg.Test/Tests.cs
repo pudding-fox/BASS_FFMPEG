@@ -369,7 +369,10 @@ namespace ManagedBass.Ffmpeg.Test
                 Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
             }
 
+            var count = BassFfmpeg.GetTrackCount(sourceChannel);
             var tracks = BassFfmpeg.GetTracks(sourceChannel);
+
+            Assert.AreEqual(count, tracks.Length);
 
             foreach (var track in tracks)
             {

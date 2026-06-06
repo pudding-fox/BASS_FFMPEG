@@ -407,9 +407,9 @@ BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream) {
 
 DWORD ffmpeg_stream_get_tracks(FFMPEG_STREAM* const stream, FFMPEG_TRACK* tracks, DWORD count) {
 	DWORD position = 0;
-	for (DWORD a = 0; a < stream->format_context->nb_streams && position < count; a++) {
+	for (DWORD a = 0; a < stream->format_context->nb_streams; a++) {
 		if (stream->format_context->streams[a]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-			if (tracks) {
+			if (tracks && position < count) {
 				AVDictionaryEntry* tag = av_dict_get(stream->format_context->streams[a]->metadata, "title", NULL, 0);
 				tracks[position].index = position;
 				if (tag) {

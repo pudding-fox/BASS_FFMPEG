@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -60,6 +61,11 @@ namespace ManagedBass.Ffmpeg
 
         [DllImport(DllName)]
         static extern int BASS_FFMPEG_GetTracks(int Handle, [Out][MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] FFMPEG_TRACK[] Tracks, int count);
+
+        public static int GetTrackCount(int Handle)
+        {
+            return BASS_FFMPEG_GetTracks(Handle, null, 9);
+        }
 
         public static FFMPEG_TRACK[] GetTracks(int Handle)
         {
