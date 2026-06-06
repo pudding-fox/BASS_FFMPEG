@@ -55,6 +55,9 @@
 		<None Include="..\Media\03 My Generation.m4a" Link="Media\03 My Generation.m4a">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
+    <None Include="..\Media\testmultitrack.mka" Link="Media\testmultitrack.mka">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
 	</ItemGroup>
 
 	<ItemGroup>
