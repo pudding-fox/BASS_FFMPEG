@@ -61,7 +61,12 @@ INT64 ffmpeg_stream_io_seek(void* opaque, INT64 position, INT whence) {
 		result = bassfunc->file.GetPos(file, BASS_FILEPOS_END);
 		break;
 	default:
-		result = bassfunc->file.Seek(file, position);
+		if (bassfunc->file.Seek(file, position)) {
+			result = bassfunc->file.GetPos(file, BASS_FILEPOS_CURRENT);
+		}
+		else {
+			result = -1;
+		}
 		break;
 	}
 	return result;
