@@ -330,7 +330,7 @@ namespace ManagedBass.Ffmpeg.Test
         }
 
         [Test]
-        public void Test005()
+        public void Test005_1()
         {
             var sourceChannel = default(int);
             if (this.Plugin)
@@ -347,6 +347,31 @@ namespace ManagedBass.Ffmpeg.Test
             }
 
             var tags = ID3v1Tag.Read(sourceChannel);
+
+            if (!Bass.StreamFree(sourceChannel))
+            {
+                Assert.Fail(string.Format("Failed to free the source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+        }
+
+        [Test]
+        public void Test005_2()
+        {
+            var sourceChannel = default(int);
+            if (this.Plugin)
+            {
+                sourceChannel = Bass.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags | BassFlags.Decode);
+            }
+            else
+            {
+                sourceChannel = BassFfmpeg.CreateStream(Path.Combine(CurrentDirectory, this.FileName), 0, 0, this.BassFlags | BassFlags.Decode);
+            }
+            if (sourceChannel == 0)
+            {
+                Assert.Fail(string.Format("Failed to create source stream: {0}", Enum.GetName(typeof(Errors), Bass.LastError)));
+            }
+
+            var tags = BassFfmpeg.GetTags(sourceChannel);
 
             if (!Bass.StreamFree(sourceChannel))
             {

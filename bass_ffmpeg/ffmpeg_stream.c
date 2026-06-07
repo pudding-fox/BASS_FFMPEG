@@ -539,6 +539,26 @@ BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index) {
 	return TRUE;
 }
 
+DWORD ffmpeg_stream_get_tags(FFMPEG_STREAM* const stream, FFMPEG_TAG* tags, DWORD count) {
+	AVDictionaryEntry* tag = NULL;
+	DWORD position = 0;
+	while (tag = av_dict_iterate(stream->format_context->metadata, tag)) {
+		if (position < count) {
+			strncpy(tags[position].name, tag->key, sizeof(tags[position].name));
+			strncpy(tags[position].value, tag->value, sizeof(tags[position].value));
+		}
+		position++;
+	}
+	while (tag = av_dict_iterate(stream->stream->metadata, tag)) {
+		if (position < count) {
+			strncpy(tags[position].name, tag->key, sizeof(tags[position].name));
+			strncpy(tags[position].value, tag->value, sizeof(tags[position].value));
+		}
+		position++;
+	}
+	return position;
+}
+
 BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream) {
 	if (stream->resample_context) {
 		swr_free(&stream->resample_context);

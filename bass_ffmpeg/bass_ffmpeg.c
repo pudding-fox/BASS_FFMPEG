@@ -216,3 +216,11 @@ BOOL WINAPI BASS_FFMPEG_SetTrack(HSTREAM handle, DWORD index) {
 	}
 	return ffmpeg_stream_set_track(stream, index);
 }
+
+DWORD WINAPI BASS_FFMPEG_GetTags(HSTREAM handle, FFMPEG_TAG* tags, DWORD count) {
+	FFMPEG_STREAM* stream = bassfunc->GetInst(handle, &addon_functions);
+	if (!stream) {
+		return 0;
+	}
+	return ffmpeg_stream_get_tags(stream, tags, count);
+}

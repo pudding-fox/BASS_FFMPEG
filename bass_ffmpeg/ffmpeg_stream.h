@@ -3,9 +3,16 @@
 #include <libavformat/avformat.h>
 #include <libswresample/swresample.h>
 
+#define FFMPEG_TAG_NAME_LENGTH 30
+#define FFMPEG_TAG_VALUE_LENGTH 300
 #define FFMPEG_TRACK_TITLE_LENGTH 30
 #define FFMPEG_STREAM_BUFFER_COUNT 10240
 #define FFMPEG_STREAM_FRAME_COUNT 16
+
+typedef struct {
+	char name[FFMPEG_TAG_NAME_LENGTH];
+	char value[FFMPEG_TAG_VALUE_LENGTH];
+} FFMPEG_TAG;
 
 typedef struct {
 	DWORD index;
@@ -55,5 +62,7 @@ BOOL ffmpeg_stream_tag(FFMPEG_STREAM* const stream);
 DWORD ffmpeg_stream_get_tracks(FFMPEG_STREAM* const stream, FFMPEG_TRACK* tracks, DWORD count);
 
 BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index);
+
+DWORD ffmpeg_stream_get_tags(FFMPEG_STREAM* const stream, FFMPEG_TAG* tags, DWORD count);
 
 BOOL ffmpeg_stream_free(FFMPEG_STREAM* const stream);
