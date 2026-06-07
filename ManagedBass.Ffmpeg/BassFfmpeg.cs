@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -69,9 +68,10 @@ namespace ManagedBass.Ffmpeg
 
         public static FFMPEG_TRACK[] GetTracks(int Handle)
         {
-            var tracks = new FFMPEG_TRACK[16];
-            var count = BASS_FFMPEG_GetTracks(Handle, tracks, tracks.Length);
-            return tracks.Take(count).ToArray();
+            var count = BASS_FFMPEG_GetTracks(Handle, null, 0);
+            var tracks = new FFMPEG_TRACK[count];
+            BASS_FFMPEG_GetTracks(Handle, tracks, tracks.Length);
+            return tracks;
         }
 
         [DllImport(DllName)]
@@ -82,7 +82,29 @@ namespace ManagedBass.Ffmpeg
             return BASS_FFMPEG_SetTrack(Handle, Index);
         }
 
+        [DllImport(DllName)]
+        static extern int BASS_FFMPEG_GetTags(int Handle, [Out][MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] FFMPEG_TAG[] Tags, int count);
+
+        public static FFMPEG_TAG[] GetTags(int Handle)
+        {
+            var count = BASS_FFMPEG_GetTags(Handle, null, 0);
+            var tags = new FFMPEG_TAG[count];
+            BASS_FFMPEG_GetTags(Handle, tags, tags.Length);
+            return tags;
+        }
+
+        const int FFMPEG_TAG_NAME_LENGTH = 30;
+        const int FFMPEG_TAG_VALUE_LENGTH = 300;
         const int FFMPEG_TRACK_TITLE_LENGTH = 30;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FFMPEG_TAG
+        {
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = FFMPEG_TAG_NAME_LENGTH)]
+            public string Name;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = FFMPEG_TAG_VALUE_LENGTH)]
+            public string Value;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct FFMPEG_TRACK
