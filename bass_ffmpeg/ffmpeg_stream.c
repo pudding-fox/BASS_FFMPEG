@@ -122,12 +122,11 @@ BOOL ffmpeg_stream_create(BASSFILE file, FFMPEG_STREAM** const stream, const DWO
 	return TRUE;
 }
 
-BOOL ffmpeg_buffer_alloc(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG_FRAME* destination) {
-	DWORD samples_per_frame = source->nb_samples * source->ch_layout.nb_channels;
+BOOL ffmpeg_buffer_alloc(FFMPEG_STREAM* const stream, FFMPEG_FRAME* destination, DWORD samples) {
+	DWORD samples_per_frame = samples * stream->codec_context->ch_layout.nb_channels;
 	DWORD bytes_per_frame = samples_per_frame * bass_bytes_per_sample(stream->flags);
-	DWORD buffer_size = bytes_per_frame * 2; //TODO: No idea why we need to multiply by 2, but swr_convert encounters a buffer overflow otherwise.
 	if (!destination->buffer) {
-		destination->buffer = malloc(buffer_size);
+		destination->buffer = malloc(bytes_per_frame);
 		if (!destination->buffer) {
 			return FALSE;
 		}
@@ -135,7 +134,7 @@ BOOL ffmpeg_buffer_alloc(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG_FR
 	}
 	else if (destination->count < bytes_per_frame) {
 		free(destination->buffer);
-		destination->buffer = malloc(buffer_size);
+		destination->buffer = malloc(bytes_per_frame);
 		if (!destination->buffer) {
 			return FALSE;
 		}
@@ -145,17 +144,24 @@ BOOL ffmpeg_buffer_alloc(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG_FR
 }
 
 BOOL ffmpeg_stream_resample(FFMPEG_STREAM* const stream, AVFrame* source, FFMPEG_FRAME* destination) {
-	if (!ffmpeg_buffer_alloc(stream, source, destination)) {
+	INT samples = swr_get_out_samples(stream->resample_context, source->nb_samples);
+	if (samples < 0) {
+		return FALSE;
+	}
+	if (!ffmpeg_buffer_alloc(stream, destination, (DWORD)samples)) {
 		return FALSE;
 	}
 
-	DWORD count = swr_convert(
+	INT count = swr_convert(
 		stream->resample_context,
 		&destination->buffer,
-		source->nb_samples,
+		samples,
 		(BYTE**)source->data,
 		source->nb_samples
 	);
+	if (count < 0) {
+		return FALSE;
+	}
 
 	destination->count =
 		count *
@@ -176,7 +182,7 @@ QWORD ffmpeg_stream_position(FFMPEG_STREAM* const stream, AVFrame* frame) {
 		DWORD bytes_per_sample = bass_bytes_per_sample(stream->flags);
 		DOUBLE position = frame->best_effort_timestamp *
 			av_q2d(stream->stream->time_base) *
-			stream->codec_context->sample_rate *
+			stream->sample_rate *
 			stream->codec_context->ch_layout.nb_channels *
 			bytes_per_sample;
 		return (QWORD)position;
@@ -344,7 +350,7 @@ QWORD ffmpeg_stream_length_seconds(FFMPEG_STREAM* const stream) {
 QWORD ffmpeg_stream_length(FFMPEG_STREAM* const stream) {
 	QWORD seconds = ffmpeg_stream_length_seconds(stream);
 	QWORD length = seconds *
-		stream->codec_context->sample_rate *
+		stream->sample_rate *
 		stream->codec_context->ch_layout.nb_channels *
 		bass_bytes_per_sample(stream->flags);
 	return length;
@@ -376,6 +382,7 @@ BOOL ffmpeg_stream_seek(FFMPEG_STREAM* const stream, QWORD position) {
 BOOL ffmpeg_stream_reset(FFMPEG_STREAM* const stream) {
 	stream->frame_count = 0;
 	stream->frame_position = 0;
+	stream->position = 0;
 	if (stream->codec_context) {
 		avcodec_flush_buffers(stream->codec_context);
 	}
@@ -498,6 +505,9 @@ BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index) {
 	if (!stream->stream) {
 		return FALSE;
 	}
+	if (av_seek_frame(stream->format_context, stream->stream_index, 0, AVSEEK_FLAG_BACKWARD) < 0) {
+		return FALSE;
+	}
 	if (!ffmpeg_stream_reset(stream)) {
 		return FALSE;
 	}
@@ -519,6 +529,9 @@ BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index) {
 	if (!stream->resample_context) {
 		return FALSE;
 	}
+	if (!stream->sample_rate) {
+		stream->sample_rate = stream->codec_context->sample_rate;
+	}
 	AVChannelLayout in_channel_layout = bass_channel_layout(stream->codec_context->ch_layout.nb_channels);
 	AVChannelLayout out_channel_layout = stream->codec_context->ch_layout;
 	enum AVSampleFormat in_format = stream->codec_context->sample_fmt;
@@ -526,7 +539,7 @@ BOOL ffmpeg_stream_set_track(FFMPEG_STREAM* const stream, DWORD index) {
 	av_opt_set_chlayout(stream->resample_context, "in_chlayout", &in_channel_layout, 0);
 	av_opt_set_chlayout(stream->resample_context, "out_chlayout", &out_channel_layout, 0);
 	av_opt_set_int(stream->resample_context, "in_sample_rate", stream->codec_context->sample_rate, 0);
-	av_opt_set_int(stream->resample_context, "out_sample_rate", stream->codec_context->sample_rate, 0);
+	av_opt_set_int(stream->resample_context, "out_sample_rate", stream->sample_rate, 0);
 	av_opt_set_sample_fmt(stream->resample_context, "in_sample_fmt", in_format, 0);
 	av_opt_set_sample_fmt(stream->resample_context, "out_sample_fmt", out_format, 0);
 	if (swr_init(stream->resample_context) < 0) {

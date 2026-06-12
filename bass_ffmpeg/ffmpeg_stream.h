@@ -36,6 +36,7 @@ typedef struct {
 	FFMPEG_FRAME frames[FFMPEG_STREAM_FRAME_COUNT];
 	DWORD frame_position;
 	DWORD frame_count;
+	DWORD sample_rate;
 	SwrContext* resample_context;
 	DWORD flags;
 	QWORD position;
