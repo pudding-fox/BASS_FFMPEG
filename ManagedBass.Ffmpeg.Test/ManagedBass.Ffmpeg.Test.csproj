@@ -4,7 +4,7 @@
 		<TargetFrameworks>net40;net461</TargetFrameworks>
 		<AssemblyName>ManagedBass.Ffmpeg.Test</AssemblyName>
 		<OutputPath>..\distribution\</OutputPath>
-		<Version>0.0.8</Version>
+		<Version>0.0.9</Version>
 		<PlatformTarget>AnyCPU</PlatformTarget>
 	</PropertyGroup>
 
@@ -61,7 +61,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ManagedBass.Ffmpeg" Version="0.0.8" />
+		<PackageReference Include="ManagedBass.Ffmpeg" Version="0.0.9" />
 		<PackageReference Include="NUnit" Version="3.10.1" />
 		<PackageReference Include="NUnit3TestAdapter" Version="3.16.1">
 			<PrivateAssets>all</PrivateAssets>
