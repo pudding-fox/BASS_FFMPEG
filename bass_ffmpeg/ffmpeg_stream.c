@@ -191,7 +191,7 @@ QWORD ffmpeg_stream_position(FFMPEG_STREAM* const stream, AVFrame* frame) {
 
 BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 	INT result;
-	BOOL success = TRUE;
+	BOOL success = FALSE;
 	AVPacket* packet = av_packet_alloc();
 	AVFrame* frame = av_frame_alloc();
 	if (!packet || !frame) {
@@ -211,7 +211,6 @@ BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 				goto done;
 			}
 			else {
-				success = FALSE;
 				goto done;
 			}
 		}
@@ -226,14 +225,12 @@ BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 				//Nothing to do.
 			}
 			else if (result == AVERROR_EOF) {
-				success = FALSE;
 				goto done;
 			}
 			else if (result == AVERROR_INVALIDDATA) {
 				//Nothing to do.
 			}
 			else {
-				success = FALSE;
 				goto done;
 			}
 		}
@@ -250,16 +247,15 @@ BOOL ffmpeg_stream_update(FFMPEG_STREAM* const stream) {
 					goto done;
 				}
 				else {
-					success = FALSE;
 					goto done;
 				}
 			}
 			if (!ffmpeg_stream_resample(stream, frame, &stream->frames[stream->frame_count])) {
-				success = FALSE;
 				goto done;
 			}
 			stream->position = ffmpeg_stream_position(stream, frame);
 			stream->frame_count++;
+			success = TRUE;
 			av_frame_unref(frame);
 			if (stream->frame_count >= FFMPEG_STREAM_FRAME_COUNT) {
 				goto done;
